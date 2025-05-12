@@ -1,0 +1,103 @@
+{
+  "graph": {
+    "vertices": [
+      {
+        "id": "0",
+        "label": "METHOD",
+        "properties": {
+          "NAME": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "<init>"
+            ]
+          }
+        }
+      },
+      {
+        "id": "1",
+        "label": "FILE",
+        "properties": {
+          "NAME": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "/project/src/main/java/org/example/Purchase.java"
+            ]
+          },
+          "CONTENT": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "package org.example; ..."
+            ]
+          }
+        }
+      },
+      {
+        "id": "2",
+        "label": "FILE",
+        "properties": {
+          "NAME": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "/project/src/main/java/org/example/Main.java"
+            ]
+          },
+          "CONTENT": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "package org.example; public class Main ..."
+            ]
+          }
+        }
+      },
+      {
+        "id": "3",
+        "label": "NAMESPACE_BLOCK",
+        "properties": {
+          "NAME": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "org.example"
+            ]
+          }
+        }
+      },
+      {
+        "id": "4",
+        "label": "FILE",
+        "properties": {
+          "NAME": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "/project/src/main/java/org/example/NoViolationsInPMD.java"
+            ]
+          },
+          "CONTENT": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "package org.example; ..."
+            ]
+          }
+        }
+      },
+      {
+        "id": "5",
+        "label": "FILE",
+        "properties": {
+          "NAME": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "/project/src/test/java/org/example/Test.java"
+            ]
+          },
+          "CONTENT": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "package org.example; ..."
+            ]
+          }
+        }
+      }
+    ],
+    "edges": []
+  }
+}

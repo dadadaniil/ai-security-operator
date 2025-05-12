@@ -1,0 +1,72 @@
+version: "3.9"
+services:
+  joern:
+    image: ghcr.io/joernio/joern:nightly
+    working_dir: /project
+    volumes:
+      - ./:/project
+      - ./export:/export
+    environment:
+      _JAVA_OPTS: "-Xmx4g"
+    entrypoint:
+      - bash
+      - -c
+      - |
+        set -euxo pipefail
+
+        echo "INFO: Starting Joern processing..."
+        echo "INFO: Current directory: $(pwd)"
+
+        echo "INFO: Parsing codebase in /project to cpg.bin..."
+        joern-parse . --output cpg.bin
+        echo "INFO: Successfully created /project/cpg.bin"
+
+        mkdir -p /export
+        echo "INFO: Export directory /export ensured."
+
+        # Export the entire CPG as GraphSON
+        echo "INFO: Exporting entire CPG (repr=all) to GraphSON at /export/cpg_all"
+        # Output to a directory named cpg_all for clarity
+        joern-export cpg.bin --repr=all --format=graphson --out="/export/cpg_all"
+        echo "INFO: Exported entire CPG successfully to /export/cpg_all."
+
+        # If you still want DOT files for individual representations (for visualization)
+        # you can add another loop here, but they won't be GraphSON.
+        # For example:
+        # for repr_val in ast cfg pdg; do
+        #   echo "INFO: Exporting graph for repr=$$repr_val to DOT at /export/$$repr_val_dot"
+        #   joern-export cpg.bin --repr="$$repr_val" --format=dot --out="/export/$$repr_val_dot"
+        #   echo "INFO: Exported $$repr_val to DOT successfully."
+        # done
+
+        echo "INFO: All exports complete."
+    restart: "no"
+
+  lint:
+    image: docker.io/pmdcode/pmd:latest
+    working_dir: /project
+    volumes:
+      - ./:/project:ro
+      - ./export/lint:/export/lint
+    entrypoint:
+      - bash
+      - -e
+      - -u
+      - -x
+      - -o
+      - pipefail
+      - -c
+      - |
+        echo "INFO: Running PMD linter on /project…"
+        mkdir -p /export/lint
+
+        pmd check \
+          -d /project \
+          -R category/java/bestpractices.xml,category/java/errorprone.xml,category/java/performance.xml,category/java/security.xml \
+          -f json \
+          -r /export/lint/pmd_report.json
+
+        echo "INFO: PMD JSON written to /export/lint/pmd_report.json"
+    depends_on:
+      - joern
+    restart: "no"

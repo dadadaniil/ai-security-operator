@@ -1,0 +1,138 @@
+{
+  "graph": {
+    "vertices": [
+      {
+        "id": "0",
+        "label": "METHOD",
+        "properties": {
+          "NAME": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "<init>"
+            ]
+          }
+        }
+      },
+      {
+        "id": "1",
+        "label": "FILE",
+        "properties": {
+          "NAME": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "/project/src/main/java/org/example/Purchase.java"
+            ]
+          },
+          "CONTENT": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "package org.example; ..."
+            ]
+          },
+          "pmd_violations": [
+            {
+              "beginline": 10,
+              "endline": 10,
+              "begincolumn": 8,
+              "endcolumn": 15,
+              "description": "Avoid using 'var'",
+              "rule": "AvoidVarType",
+              "ruleset": "Best Practices",
+              "priority": 3
+            }
+          ]
+        }
+      },
+      {
+        "id": "2",
+        "label": "FILE",
+        "properties": {
+          "NAME": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "/project/src/main/java/org/example/Main.java"
+            ]
+          },
+          "CONTENT": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "package org.example; public class Main ..."
+            ]
+          },
+          "pmd_violations": [
+            {
+              "beginline": 5,
+              "endline": 5,
+              "begincolumn": 1,
+              "endcolumn": 50,
+              "description": "System.out.println is used",
+              "rule": "SystemPrintln",
+              "ruleset": "Best Practices",
+              "priority": 3
+            },
+            {
+              "beginline": 12,
+              "endline": 12,
+              "begincolumn": 1,
+              "endcolumn": 20,
+              "description": "Unused local variable 'x'",
+              "rule": "UnusedLocalVariable",
+              "ruleset": "Best Practices",
+              "priority": 3
+            }
+          ]
+        }
+      },
+      {
+        "id": "3",
+        "label": "NAMESPACE_BLOCK",
+        "properties": {
+          "NAME": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "org.example"
+            ]
+          }
+        }
+      },
+      {
+        "id": "4",
+        "label": "FILE",
+        "properties": {
+          "NAME": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "/project/src/main/java/org/example/NoViolationsInPMD.java"
+            ]
+          },
+          "CONTENT": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "package org.example; ..."
+            ]
+          },
+          "pmd_violations": []
+        }
+      },
+      {
+        "id": "5",
+        "label": "FILE",
+        "properties": {
+          "NAME": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "/project/src/test/java/org/example/Test.java"
+            ]
+          },
+          "CONTENT": {
+            "@type": "g:VertexProperty",
+            "@value": [
+              "package org.example; ..."
+            ]
+          }
+        }
+      }
+    ],
+    "edges": []
+  }
+}
