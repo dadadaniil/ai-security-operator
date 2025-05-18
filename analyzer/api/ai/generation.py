@@ -10,7 +10,7 @@ from langchain_ollama import ChatOllama
 
 from api.data.types import DataType
 from api.data.vectorstore import get_vectorstore
-from api.env import LLM_MODEL, OLLAMA_URL
+from api.env import *
 
 
 def __get_retriever(dtype: DataType, num_docs: int) -> VectorStoreRetriever:
@@ -19,7 +19,7 @@ def __get_retriever(dtype: DataType, num_docs: int) -> VectorStoreRetriever:
 
 # To allow us to change llm provider later
 def __get_llm(**kwargs) -> BaseChatModel:
-    return ChatOllama(model=LLM_MODEL, base_url=OLLAMA_URL, **kwargs)
+    return ChatOllama(model=LLM_MODEL, base_url=OLLAMA_URL, num_predict=LLM_OUTPUT_TOKEN_LIMIT, **kwargs)
 
 
 contextualize_q_system_prompt = (
@@ -49,15 +49,13 @@ analysis_prompt = ChatPromptTemplate.from_messages([
 ])
 
 unit_test_writing_prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are assistant that writes unit tests for code with vulnerabilities and bad practices. "
-               "You are given source code and list of found vulnerabilities and bad practices. "
+    ("system", "You are given source code and list of found vulnerabilities and bad practices. "
                "Write unit tests for code to cover potential edge cases. Emphasise provided found bad practices and cover respective code lines with tests. "
                "Don't forget about other edge cases that may be not present in bad practices list. If there are not cases that should be covered by tests, respond with empty string. "
                "Use {framework} framework for {language} programming language to write unit tests. "
-               "Format output as plain text source code. Do not output anything else."),
+               "Output strictly only source code. Do not output anything else."),
     ("system", "Context: {context}"),
-    MessagesPlaceholder(variable_name="chat_history"),
-    ("human", "{input}")
+    ("human", "{input}"),
 ])
 
 
@@ -83,7 +81,6 @@ def get_unit_tests_rag_chain() -> Runnable:
         retrievers=[code_retriever, requirements_retriever], weights=[0.5, 0.5]
     )
 
-    history_aware_retriever = create_history_aware_retriever(llm, ensemble_retriever, contextualize_q_prompt)
     question_answer_chain = create_stuff_documents_chain(llm, unit_test_writing_prompt)
-    rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
+    rag_chain = create_retrieval_chain(ensemble_retriever, question_answer_chain)
     return rag_chain

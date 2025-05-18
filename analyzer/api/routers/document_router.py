@@ -8,16 +8,16 @@ from api.data.vectorstore import *
 from api.data.types import DataType
 from api.dto import DocumentInfo
 
+logger = logs.get_logger(__name__)
+
 router = APIRouter(prefix="/project", tags=["Project files"])
 
 
 async def upload_and_index_document(file: UploadFile, dtype: DataType):
-    file_extension = os.path.splitext(file.filename)[1].lower()
-
-    if file_extension not in supported_extensions:
-        raise HTTPException(status_code=400, detail=f"Unsupported file type. Allowed types are: {', '.join(supported_extensions)}")
-
     temp_file_path = f"temp_{file.filename}"
+
+    # if not temp_file_path.endswith('.json'):
+    #     raise HTTPException(status_code=500, detail=f"Only .json files supported yet. Don't put your blame on me")
 
     try:
         with open(temp_file_path, "wb") as buffer:

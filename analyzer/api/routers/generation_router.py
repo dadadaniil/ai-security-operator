@@ -1,16 +1,26 @@
-from fastapi import APIRouter
+import logging
+import uuid
 
+from fastapi import APIRouter, HTTPException
+
+from api import logs
+from api.ai.generation import *
+from api.data.db import *
 from api.dto import *
+
+
+logger = logs.get_logger(__name__)
+
 
 router = APIRouter(prefix="/generation", tags=["Generation"])
 
 
 # todo what if codebase is too large? how to specify exact module for summary
-@router.get("/analyzer/summary",
+@router.post("/analysis-summary",
           response_model=SummaryResponse,
           description='Generates summary with found vulnerabilities and bad practices.')
 def get_code_summary(query_input: SummaryRequest):
-    pass
+    raise HTTPException(status_code=500, detail="Not implemented. Yet.")
     # session_id = query_input.session_id or str(uuid.uuid4())
     #
     # chat_history = get_chat_history(session_id)
@@ -30,22 +40,19 @@ def get_code_summary(query_input: SummaryRequest):
 
 
 # todo what if codebase is too large? how to specify exact module for test writing
-@router.get("/testwriter/unit",
+@router.post("/unit-tests",
           response_model=UnitTestResponse,
           description='Generates source code for unit tests for given source code file.')
 def get_unit_tests(request: UnitTestRequest):
-    pass
-    # session_id = request.session_id or str(uuid.uuid4())
+    session_id = request.session_id or str(uuid.uuid4())
 
-    # chat_history = get_chat_history(session_id)
-    # rag_chain = get_analysis_rag_chain(request.model.value)
-    # answer = rag_chain.invoke({
-    #     "input": request.question,
-    #     "language": request.language,
-    #     "framework": request.framework,
-    #     "chat_history": chat_history
-    # })['answer']
-    #
-    # insert_application_logs(session_id, request.source_code, answer, request.model.value)
-    # logger.info(f"SID: {session_id}, Response: {answer}")
-    # return UnitTestResponse(source_code=answer, session_id=session_id, model=request.model)
+    rag_chain = get_unit_tests_rag_chain()
+    answer = rag_chain.invoke({
+        "input": "strictly follow system instructions and write unit tests for related source code in context",  # todo why is this needed
+        "language": request.language,
+        "framework": request.framework,
+    })['answer']
+
+    logger.info(f"SID: {session_id}, Response: {answer}")
+    insert_application_logs(session_id, 'unit_tests_request', answer)
+    return UnitTestResponse(source_code=answer, session_id=session_id)

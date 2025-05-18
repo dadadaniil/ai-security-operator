@@ -1,22 +1,23 @@
 import logging
+from json import load
 from typing import List
 
 from langchain_chroma import Chroma
-from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, UnstructuredHTMLLoader
 from langchain_core.documents import Document
 from langchain_ollama import OllamaEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter, RecursiveJsonSplitter
+from langchain_unstructured import UnstructuredLoader
 
+from api import logs
 from api.data.types import DataType
 from api.env import LLM_MODEL, VECTORSTORE_PATH
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+
+logger = logs.get_logger(__name__)
 
 
 supported_extensions = ['.pdf', '.docx', '.html']
 
-__text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200, length_function=len)
 __vector_stores: dict[DataType, Chroma] = {}
 
 
@@ -37,28 +38,29 @@ def get_vectorstore(dtype: DataType) -> Chroma:
     return __vector_stores[dtype]
 
 
-# todo HTML can not be indexed, why
-# todo embed plain text
-def embed_document(file_path: str) -> List[Document]:
-    # todo map instead of ifs
-    if file_path.endswith('.pdf'):
-        loader = PyPDFLoader(file_path)
-    elif file_path.endswith('.docx'):
-        loader = Docx2txtLoader(file_path)
-    elif file_path.endswith('.html'):
-        loader = UnstructuredHTMLLoader(file_path)
-    else:
-        raise ValueError(f"Unsupported file type: {file_path}")
+def __embed_document(file_path: str) -> List[Document]:
+    if file_path.endswith('.json'):
+        splitter = RecursiveJsonSplitter(max_chunk_size=500)
 
-    documents = loader.load()
-    return __text_splitter.split_documents(documents)
+        with open(file_path) as f:
+            json_data = load(f)
+            documents = splitter.create_documents(texts=[json_data])
+    else:
+        # todo works 50/50, breaks with pdf's obtained via 'print' in chrome. json is fine though
+        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200, length_function=len)
+
+        loader = UnstructuredLoader(file_path)
+        loaded = loader.load()
+        documents = splitter.split_documents(loaded)
+
+    return documents
 
 
 def index_document_to_chroma(file_path: str, file_id: int, dtype: DataType) -> bool:
     vectorstore = get_vectorstore(dtype)
 
     try:
-        splits = embed_document(file_path)
+        splits = __embed_document(file_path)
 
         for split in splits:
             split.metadata['file_id'] = file_id

@@ -4,24 +4,11 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 
+from api import logs
 from api.env import API_PORT
 from api.routers import document_router, generation_router
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-formatter = logging.Formatter("%(levelname)s %(asctime)s %(name)s - %(message)s", "%H:%M:%S")
-
-file_handler = logging.FileHandler('app.log')
-file_handler.setFormatter(formatter)
-file_handler.setLevel(logging.DEBUG)
-
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-console_handler.setLevel(logging.DEBUG)
-
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
+logger = logs.get_logger(__name__)
 
 app = FastAPI()
 

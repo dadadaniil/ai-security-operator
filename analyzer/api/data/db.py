@@ -19,7 +19,6 @@ def create_application_logs():
                      session_id TEXT,
                      user_query TEXT,
                      gpt_response TEXT,
-                     model TEXT,
                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     conn.close()
 
@@ -35,10 +34,10 @@ def create_document_tables():
     conn.close()
 
 
-def insert_application_logs(session_id, user_query, gpt_response, model):
+def insert_application_logs(session_id, user_query, gpt_response):
     conn = get_db_connection()
-    conn.execute('INSERT INTO application_logs (session_id, user_query, gpt_response, model) VALUES (?, ?, ?, ?)',
-                 (session_id, user_query, gpt_response, model))
+    conn.execute('INSERT INTO application_logs (session_id, user_query, gpt_response) VALUES (?, ?, ?)',
+                 (session_id, user_query, gpt_response))
     conn.commit()
     conn.close()
 

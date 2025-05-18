@@ -7,3 +7,4 @@ API_PORT=int(getenv("API_PORT"))
 LLM_MODEL=getenv("LLM_MODEL")
 VECTORSTORE_PATH=getenv("VECTORSTORE_PATH")
 OLLAMA_URL=getenv("OLLAMA_URL")
+LLM_OUTPUT_TOKEN_LIMIT=int(getenv("LLM_OUTPUT_TOKEN_LIMIT"))  # Debug stuff to speed up gen
