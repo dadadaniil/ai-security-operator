@@ -1,12 +1,26 @@
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.history_aware_retriever import create_history_aware_retriever
 from langchain.chains.retrieval import create_retrieval_chain
-from langchain_community.chat_models import ChatOllama
+from langchain.retrievers import EnsembleRetriever
+from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables import Runnable
+from langchain_core.vectorstores import VectorStoreRetriever
+from langchain_ollama import ChatOllama
 
-from api.chroma_utils import vectorstore
+from api.data.types import DataType
+from api.data.vectorstore import get_vectorstore
+from api.env import LLM_MODEL, OLLAMA_URL
 
-retriever = vectorstore.as_retriever(search_kwargs={"k": 2})
+
+def __get_retriever(dtype: DataType, num_docs: int) -> VectorStoreRetriever:
+    return get_vectorstore(dtype).as_retriever(search_kwargs={"k": num_docs})
+
+
+# To allow us to change llm provider later
+def __get_llm(**kwargs) -> BaseChatModel:
+    return ChatOllama(model=LLM_MODEL, base_url=OLLAMA_URL, **kwargs)
+
 
 contextualize_q_system_prompt = (
     "Given a chat history and the latest user question "
@@ -47,17 +61,29 @@ unit_test_writing_prompt = ChatPromptTemplate.from_messages([
 ])
 
 
-def get_analysis_rag_chain(model: str):
-    llm = ChatOllama(model=model, temperature=0.15)
-    history_aware_retriever = create_history_aware_retriever(llm, retriever, contextualize_q_prompt)
+def get_analysis_rag_chain() -> Runnable:
+    llm = __get_llm(temperature=0.15)
+
+    # todo why num_docs==2? maybe more will fit? investigate llm context length
+    code_retriever = __get_retriever(DataType.SOURCE_CODE, 2)
+
+    history_aware_retriever = create_history_aware_retriever(llm, code_retriever, contextualize_q_prompt)
     question_answer_chain = create_stuff_documents_chain(llm, analysis_prompt)
     rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)    
     return rag_chain
 
 
-def get_unit_tests_rag_chain(model: str):
-    llm = ChatOllama(model=model, temperature=0.05)
-    history_aware_retriever = create_history_aware_retriever(llm, retriever, contextualize_q_prompt)
+def get_unit_tests_rag_chain() -> Runnable:
+    llm = __get_llm(temperature=0.05)
+
+    code_retriever = __get_retriever(DataType.SOURCE_CODE, 2)
+    requirements_retriever = __get_retriever(DataType.REQUIREMENTS, 2)
+
+    ensemble_retriever = EnsembleRetriever(
+        retrievers=[code_retriever, requirements_retriever], weights=[0.5, 0.5]
+    )
+
+    history_aware_retriever = create_history_aware_retriever(llm, ensemble_retriever, contextualize_q_prompt)
     question_answer_chain = create_stuff_documents_chain(llm, unit_test_writing_prompt)
     rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
     return rag_chain
