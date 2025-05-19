@@ -1,0 +1,115 @@
+# ----------------------------------------------------------------------------
+#   Defines Docker Compose services for orchestrating code analysis:
+#     • joern: generates code property graph and exports to GraphSON.
+#     • lint: runs PMD linter to produce a JSON report.
+#     • mock_receiver: mock HTTP service for receiving merged graphs.
+# ----------------------------------------------------------------------------
+services:
+  joern:
+    image: ghcr.io/joernio/joern:nightly
+    working_dir: /app
+    volumes:
+      - ../project:/sources
+      - ./export:/export
+    environment:
+      _JAVA_OPTS: "-Xmx4g"
+    entrypoint:
+      - bash
+      - -c
+      - |
+        set -euxo pipefail
+
+        echo "INFO: Starting Joern processing..."
+        JAVA_SOURCE_PATH="/sources"
+        CPG_TEMP_PATH="/app/cpg.bin"
+
+        rm -f $${CPG_TEMP_PATH}
+        echo "INFO: Removed existing temp CPG (if any)."
+
+        echo "INFO: Parsing Java codebase in $${JAVA_SOURCE_PATH} to $${CPG_TEMP_PATH}..."
+        joern-parse "$${JAVA_SOURCE_PATH}" --language java --output "$${CPG_TEMP_PATH}"
+        echo "INFO: Successfully created $${CPG_TEMP_PATH}"
+
+        JOERN_EXPORT_TARGET_DIR="/export/cpg_all"
+        mkdir -p "$(dirname "$${JOERN_EXPORT_TARGET_DIR}")"
+        
+        rm -rf "$${JOERN_EXPORT_TARGET_DIR}"
+        echo "INFO: Ensured target export directory $${JOERN_EXPORT_TARGET_DIR} is clean for joern-export."
+
+        echo "INFO: Exporting CPG from $${CPG_TEMP_PATH} to GraphSON in $${JOERN_EXPORT_TARGET_DIR}..."
+        joern-export "$${CPG_TEMP_PATH}" --repr=all --format=graphson --out="$${JOERN_EXPORT_TARGET_DIR}"
+        
+        EXPECTED_JOERN_OUT_FILE="$${JOERN_EXPORT_TARGET_DIR}/export.json" 
+
+        sleep 1
+        if [ ! -s "$${EXPECTED_JOERN_OUT_FILE}" ]; then
+          echo "ERROR: Joern export file $${EXPECTED_JOERN_OUT_FILE} was not created or is empty!"
+          echo "DEBUG: Contents of $${JOERN_EXPORT_TARGET_DIR}:"
+          ls -la "$${JOERN_EXPORT_TARGET_DIR}" || echo "DEBUG: Could not list $${JOERN_EXPORT_TARGET_DIR}"
+          exit 1
+        fi
+        echo "INFO: Exported CPG successfully to $${EXPECTED_JOERN_OUT_FILE}."
+
+        echo "INFO: Fixing permissions for $${EXPECTED_JOERN_OUT_FILE}"
+        chown "$(stat -c '%u:%g' /sources)" "$${EXPECTED_JOERN_OUT_FILE}" || echo "WARN: Could not chown $${EXPECTED_JOERN_OUT_FILE}"
+
+        echo "INFO: Joern processing complete."
+        exit 0
+    restart: "no"
+
+  lint:
+    image: docker.io/pmdcode/pmd:latest
+    working_dir: /app
+    volumes:
+      - ../project:/sources:ro
+      - ./export/lint:/export/lint
+    entrypoint:
+      - bash
+      - -c
+      - |
+        set -uxo pipefail
+        
+        JAVA_SOURCE_PATH="/sources"
+        echo "INFO: Running PMD linter on $${JAVA_SOURCE_PATH}…"
+        LINT_OUT_DIR="/export/lint"
+        mkdir -p "$${LINT_OUT_DIR}"
+        PMD_OUT_FILE="$${LINT_OUT_DIR}/pmd_report.json"
+        
+        pmd check \
+          -d "$${JAVA_SOURCE_PATH}" \
+          -R category/java/bestpractices.xml,category/java/errorprone.xml,category/java/performance.xml,category/java/security.xml \
+          -f json \
+          -r "$${PMD_OUT_FILE}" \
+          --fail-on-violation=false
+        PMD_EXIT_CODE=$?
+        
+        echo "INFO: PMD command finished with exit code: $${PMD_EXIT_CODE}"
+        
+        sleep 1
+        if [ ! -s "$${PMD_OUT_FILE}" ]; then
+          echo "ERROR: PMD report file $${PMD_OUT_FILE} was not created or is empty!"
+          exit 2
+        fi
+        echo "INFO: PMD JSON written to $${PMD_OUT_FILE}"
+        
+        if [ "$${PMD_EXIT_CODE}" -ne 0 ] && [ "$${PMD_EXIT_CODE}" -ne 4 ]; then
+            echo "ERROR: PMD exited with unexpected code $${PMD_EXIT_CODE}. Check PMD logs for serious errors."
+            exit $${PMD_EXIT_CODE}
+        fi
+        
+        echo "INFO: Fixing permissions for $${PMD_OUT_FILE}"
+        chown "$(stat -c '%u:%g' /sources)" "$${PMD_OUT_FILE}" || echo "WARN: Could not chown $${PMD_OUT_FILE}"
+        
+        echo "INFO: PMD processing considered successful for workflow continuation."
+        exit 0
+    restart: "no"
+
+  mock_receiver:
+    build:
+      context: ./receiver
+      dockerfile: Dockerfile.receiver
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./uploads:/uploads
+    restart: "no"
