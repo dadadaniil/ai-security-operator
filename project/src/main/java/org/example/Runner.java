@@ -9,24 +9,27 @@ import java.util.regex.Pattern;
 
 public class Runner {
     public static void main(String[] args) {
-        final String FILENAME = "src/in.csv";
+        final String FILENAME = "src/main/resources/in.csv";
         try (Scanner sc = new Scanner(new FileReader(FILENAME))) {
+            sc.useDelimiter(";|\\R");  // Use semicolon or newline as delimiter
             Map<Purchase, WeekDay> firstPurchasesMap = new HashMap<>();
             Map<Purchase, WeekDay> lastPurchasesMap = new HashMap<>();
             Map<WeekDay, List<Purchase>> dayPurchasesMap = new EnumMap<>(WeekDay.class);
             List<PricePurchase> pricePurchases = new ArrayList<>();
-                while (sc.hasNext()) {
+            while (sc.hasNext()) {
                 Purchase currentPurchase = PurchaseFactory.createPurchase(sc);
-                WeekDay day = WeekDay.valueOf(sc.nextLine());
-                lastPurchasesMap.put(currentPurchase, day);
-                if (!firstPurchasesMap.containsKey(currentPurchase)) {
-                    firstPurchasesMap.put(currentPurchase, day);
-                }
-                List<Purchase> purchases = dayPurchasesMap.getOrDefault(day, new ArrayList<>());
-                purchases.add(currentPurchase);
-                dayPurchasesMap.put(day, purchases);
-                if (currentPurchase instanceof PricePurchase pricePurchase1) {
-                    pricePurchases.add(pricePurchase1);
+                if (sc.hasNext()) {
+                    WeekDay day = WeekDay.valueOf(sc.next().trim());
+                    lastPurchasesMap.put(currentPurchase, day);
+                    if (!firstPurchasesMap.containsKey(currentPurchase)) {
+                        firstPurchasesMap.put(currentPurchase, day);
+                    }
+                    List<Purchase> purchases = dayPurchasesMap.getOrDefault(day, new ArrayList<>());
+                    purchases.add(currentPurchase);
+                    dayPurchasesMap.put(day, purchases);
+                    if (currentPurchase instanceof PricePurchase pricePurchase1) {
+                        pricePurchases.add(pricePurchase1);
+                    }
                 }
             }
             sc.close();
