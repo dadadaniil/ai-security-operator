@@ -1,5 +1,3 @@
-import logging
-
 import uvicorn
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
@@ -27,10 +25,3 @@ def custom_openapi():
 app.openapi = custom_openapi
 app.include_router(document_router.router)
 app.include_router(generation_router.router)
-
-
-if __name__ == "__main__":
-    port = API_PORT
-    logger.info(f"Documentation available at http://127.0.0.1:{port}/docs")
-    uvicorn.run("main:app", host="127.0.0.1", port=port)
-

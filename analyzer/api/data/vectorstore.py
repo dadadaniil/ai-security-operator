@@ -47,6 +47,7 @@ def __embed_document(file_path: str) -> List[Document]:
             documents = splitter.create_documents(texts=[json_data])
     else:
         # todo works 50/50, breaks with pdf's obtained via 'print' in chrome. json is fine though
+        # todo the fuck is 'poppler', rewrite pdf loader without unstructured?
         splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200, length_function=len)
 
         loader = UnstructuredLoader(file_path)
