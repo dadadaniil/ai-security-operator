@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:13-alpine
+    environment:
+      POSTGRES_USER: msf
+      POSTGRES_PASSWORD: msf
+      POSTGRES_DB: msf
+    volumes:
+      - msf-db:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  metasploit:
+    image: metasploitframework/metasploit-framework:latest
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://msf:msf@db:5432/msf
+      POSTGRES_HOST: db
+      POSTGRES_USER: msf
+      POSTGRES_PASSWORD: msf
+      POSTGRES_DB: msf
+    ports:
+      - "55553:55553"
+    # Use msfconsole with a resource script instead of msfrpcd
+    entrypoint: ["./msfconsole", "-q", "-x", "load msgrpc ServerHost=0.0.0.0 ServerPort=55553 User=msf Pass=msf SSL=false; sleep 3600"]
+    working_dir: /usr/src/metasploit-framework
+    stdin_open: true
+    tty: true
+    volumes:
+      - msf-data:/home/msf/.msf4
+    restart: unless-stopped
+    networks:
+      - msf-network
+
+  exploiter:
+    build: ./exploiter
+    depends_on:
+      - metasploit
+    environment:
+      - MSF_HOST=metasploit
+      - MSF_PORT=55553
+      - MSF_USER=msf
+      - MSF_PASS=msf
+      - TARGET_HOST=8.8.8.8  # Google DNS as an example target
+    restart: on-failure
+    networks:
+      - msf-network
+
+networks:
+  msf-network:
+    driver: bridge
+
+volumes:
+  msf-db:
+  msf-data:

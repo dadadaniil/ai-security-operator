@@ -25,3 +25,8 @@ TestResults.xml
 /.idea/
 /exporter/uploads
 /exporter/export
+/.vscode
+/.cursor/rules
+**/__pycache__
+.idea/misc.xml
+.idea/modules.xml
