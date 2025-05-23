@@ -19,7 +19,7 @@ def __get_retriever(dtype: DataType, num_docs: int) -> VectorStoreRetriever:
 
 # To allow us to change llm provider later
 def __get_llm(**kwargs) -> BaseChatModel:
-    return ChatOllama(model=LLM_MODEL, base_url=OLLAMA_URL, num_predict=LLM_OUTPUT_TOKEN_LIMIT, **kwargs)
+    return ChatOllama(model=LLM_MODEL, num_predict=LLM_OUTPUT_TOKEN_LIMIT, **kwargs)
 
 
 contextualize_q_system_prompt = (

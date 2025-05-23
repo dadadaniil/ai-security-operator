@@ -25,3 +25,7 @@ def custom_openapi():
 app.openapi = custom_openapi
 app.include_router(document_router.router)
 app.include_router(generation_router.router)
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=API_PORT)

@@ -1,30 +1,32 @@
 services:
-  # ollama:
-  #   volumes:
-  #     - ollama:/root/.ollama
-  #   container_name: ollama
-  #   ports:
-  #     - 11434:11434
-  #   pull_policy: always
-  #   tty: true
-  #   restart: unless-stopped
-  #   image: ollama/ollama:latest
+  ollama:
+    pull_policy: always
+    build:
+      context: .
+      dockerfile: ollama.Dockerfile
+    volumes:
+      - type: bind
+        source: /ollama-entrypoint.sh
+        target: /root/.ollama
+    ports:
+      - "11434:11434"
+    restart: always
 
   analyzer:
     image: ${DOCKER_REGISTRY-}ai-analyzer
-    container_name: AI-Analyzer
+    depends_on:
+      - ollama
     ports:
-      - "11434:11434"
-      - "5001:8000" 
+      - "8000:8000/tcp"
     build:
       context: .
       dockerfile: analyzer/ai-analyzer.Dockerfile
     environment:
       - API_PORT=8000
-      - OLLAMA_URL=http://localhost:11434
       - LLM_MODEL=llama3.2
       - VECTORSTORE_PATH=./chroma_db
       - LLM_OUTPUT_TOKEN_LIMIT=120
+      - OLLAMA_HOST=http://ollama:11434/
 
 volumes:
   ollama: {}

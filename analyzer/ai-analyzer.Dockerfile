@@ -7,9 +7,11 @@ COPY analyzer/api/requirements.txt requirements.txt
 RUN --mount=type=cache,target=/root/.cache \
     pip install -r requirements.txt
 
+RUN apt-get install curl -y
+
 COPY analyzer/. .
 RUN rm api/.env
 
 ENV PYTHONPATH "${PYTHONPATH}:/api"
 
-CMD ["fastapi", "run", "api/main.py", "--port", "8000"]
+CMD ["python", "api/main.py"]
