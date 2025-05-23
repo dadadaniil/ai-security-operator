@@ -8,6 +8,8 @@ services:
     volumes:
       - msf-db:/var/lib/postgresql/data
     restart: unless-stopped
+    networks:
+      - msf-network
 
   metasploit:
     image: metasploitframework/metasploit-framework:latest
@@ -41,10 +43,19 @@ services:
       - MSF_PORT=55553
       - MSF_USER=msf
       - MSF_PASS=msf
-      - TARGET_HOST=8.8.8.8  # Google DNS as an example target
+      - TARGET_HOST=8.8.8.8  # Default target for examples
+      - PORT=8000            # FastAPI port
+      - LOG_LEVEL=INFO
+    ports:
+      - "8000:8000"          # Expose FastAPI port
     restart: on-failure
     networks:
       - msf-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
 networks:
   msf-network:
