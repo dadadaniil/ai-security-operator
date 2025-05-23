@@ -9,6 +9,7 @@ class DocumentInfo(BaseModel):
 
 
 class SummaryRequest(BaseModel):
+    request: str | None
     session_id: str = Field(default=None)
 
 
@@ -19,8 +20,9 @@ class SummaryResponse(BaseModel):
 
 class UnitTestRequest(BaseModel):
     session_id: str = Field(default=None)
-    language: str
-    framework: str
+    request: str | None = Field(default='Tested feauture description')
+    language: str = Field(default='Java')
+    framework: str = Field(default='Any')
 
 
 class UnitTestResponse(BaseModel):

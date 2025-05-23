@@ -1,5 +1,4 @@
-import logging
-from json import load
+import json
 from typing import List
 
 from langchain_chroma import Chroma
@@ -12,11 +11,8 @@ from api import logs
 from api.data.types import DataType
 from api.env import LLM_MODEL, VECTORSTORE_PATH
 
-
 logger = logs.get_logger(__name__)
 
-
-supported_extensions = ['.pdf', '.docx', '.html']
 
 __vector_stores: dict[DataType, Chroma] = {}
 
@@ -40,21 +36,33 @@ def get_vectorstore(dtype: DataType) -> Chroma:
 
 def __embed_document(file_path: str) -> List[Document]:
     if file_path.endswith('.json'):
-        splitter = RecursiveJsonSplitter(max_chunk_size=500)
-
-        with open(file_path) as f:
-            json_data = load(f)
-            documents = splitter.create_documents(texts=[json_data])
+        return _process_json_file(file_path)
     else:
-        # todo works 50/50, breaks with pdf's obtained via 'print' in chrome. json is fine though
-        # todo the fuck is 'poppler', rewrite pdf loader without unstructured?
-        splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200, length_function=len)
+        return _process_text_file(file_path)
 
-        loader = UnstructuredLoader(file_path)
-        loaded = loader.load()
-        documents = splitter.split_documents(loaded)
 
-    return documents
+def _process_json_file(file_path: str) -> List[Document]:
+    with open(file_path, encoding='utf-8') as f:
+        json_data = json.load(f)
+
+    splitter = RecursiveJsonSplitter(
+        max_chunk_size=800
+    )
+
+    return splitter.create_documents(texts=[json_data])
+
+
+def _process_text_file(file_path: str) -> List[Document]:
+    loader = UnstructuredLoader(file_path)
+    loaded = loader.load()
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=3000,
+        chunk_overlap=250,
+        length_function=len
+    )
+
+    return splitter.split_documents(loaded)
 
 
 def index_document_to_chroma(file_path: str, file_id: int, dtype: DataType) -> bool:
@@ -64,6 +72,11 @@ def index_document_to_chroma(file_path: str, file_id: int, dtype: DataType) -> b
         splits = __embed_document(file_path)
 
         for split in splits:
+            # some weird stuff with lists in metadata
+            for k, v in split.metadata.items():
+                if isinstance(v, list):
+                    split.metadata[k] = str(v)
+
             split.metadata['file_id'] = file_id
 
         vectorstore.add_documents(splits)

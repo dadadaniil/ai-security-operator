@@ -15,7 +15,6 @@ logger = logs.get_logger(__name__)
 router = APIRouter(prefix="/generation", tags=["Generation"])
 
 
-# todo what if codebase is too large? how to specify exact module for summary
 @router.post("/analysis-summary",
           response_model=SummaryResponse,
           description='Generates summary with found vulnerabilities and bad practices.')
@@ -39,7 +38,6 @@ def get_code_summary(query_input: SummaryRequest):
     # return SummaryResponse(summary=summary, session_id=session_id, model=query_input.model)
 
 
-# todo what if codebase is too large? how to specify exact module for test writing
 @router.post("/unit-tests",
           response_model=UnitTestResponse,
           description='Generates source code for unit tests for given source code file.')
@@ -48,10 +46,13 @@ def get_unit_tests(request: UnitTestRequest):
 
     rag_chain = get_unit_tests_rag_chain()
     answer = rag_chain.invoke({
-        "input": "strictly follow system instructions and write unit tests for related source code in context",  # todo why is this needed
+        "input": f"strictly follow system instructions and write unit tests for {'all source code in context' if request.request is None else request.request}",
         "language": request.language,
         "framework": request.framework,
     })['answer']
+
+    # markdown stuff
+    answer = str.replace(answer, '```', '')
 
     logger.info(f"SID: {session_id}, Response: {answer}")
     insert_application_logs(session_id, 'unit_tests_request', answer)

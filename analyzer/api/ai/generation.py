@@ -49,9 +49,9 @@ analysis_prompt = ChatPromptTemplate.from_messages([
 ])
 
 unit_test_writing_prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are given source code and list of found vulnerabilities and bad practices. "
-               "Write unit tests for code to cover potential edge cases. Emphasise provided found bad practices and cover respective code lines with tests. "
-               "Don't forget about other edge cases that may be not present in bad practices list. If there are not cases that should be covered by tests, respond with empty string. "
+    ("system", "You are given source code, technical requirements for code and static analysis reports for code. "
+               "Write unit tests for specified feature in source code to cover related technical requirements. "
+               "Don't forget about edge cases that may be not present in static analysis reports. "
                "Use {framework} framework for {language} programming language to write unit tests. "
                "Output strictly only source code. Do not output anything else."),
     ("system", "Context: {context}"),
@@ -62,8 +62,7 @@ unit_test_writing_prompt = ChatPromptTemplate.from_messages([
 def get_analysis_rag_chain() -> Runnable:
     llm = __get_llm(temperature=0.15)
 
-    # todo why num_docs==2? maybe more will fit? investigate llm context length
-    code_retriever = __get_retriever(DataType.SOURCE_CODE, 2)
+    code_retriever = __get_retriever(DataType.SOURCE_CODE, 20)
 
     history_aware_retriever = create_history_aware_retriever(llm, code_retriever, contextualize_q_prompt)
     question_answer_chain = create_stuff_documents_chain(llm, analysis_prompt)
@@ -74,8 +73,8 @@ def get_analysis_rag_chain() -> Runnable:
 def get_unit_tests_rag_chain() -> Runnable:
     llm = __get_llm(temperature=0.05)
 
-    code_retriever = __get_retriever(DataType.SOURCE_CODE, 2)
-    requirements_retriever = __get_retriever(DataType.REQUIREMENTS, 2)
+    code_retriever = __get_retriever(DataType.SOURCE_CODE, 10)
+    requirements_retriever = __get_retriever(DataType.REQUIREMENTS, 10)
 
     ensemble_retriever = EnsembleRetriever(
         retrievers=[code_retriever, requirements_retriever], weights=[0.5, 0.5]

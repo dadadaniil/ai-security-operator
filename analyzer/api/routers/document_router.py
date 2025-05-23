@@ -16,9 +16,6 @@ router = APIRouter(prefix="/project", tags=["Project files"])
 async def upload_and_index_document(file: UploadFile, dtype: DataType):
     temp_file_path = f"temp_{file.filename}"
 
-    # if not temp_file_path.endswith('.json'):
-    #     raise HTTPException(status_code=500, detail=f"Only .json files supported yet. Don't put your blame on me")
-
     try:
         with open(temp_file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
