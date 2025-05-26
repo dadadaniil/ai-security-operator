@@ -43,10 +43,10 @@ services:
       - MSF_USER=msf
       - MSF_PASS=msf
       - TARGET_HOST=8.8.8.8
-      - PORT=8000
+      - PORT=8081
       - LOG_LEVEL=INFO
     ports:
-      - "8000:8000"
+      - "8081:8000"
     restart: on-failure
     networks:
       - msf-network
@@ -56,37 +56,48 @@ services:
       timeout: 10s
       retries: 5
 
-  ollama:
-    pull_policy: always
-    build:
-      context: .
-      dockerfile: ollama.Dockerfile
-    volumes:
-      - type: bind
-        source: /ollama-entrypoint.sh
-        target: /root/.ollama
-      - ollama:/root/.ollama
-    ports:
-      - "11434:11434"
-    restart: always
-    networks:
-      - msf-network
+  # ollama:
+  #   pull_policy: always
+  #   build:
+  #     context: .
+  #     dockerfile: ollama.Dockerfile
+  #   volumes:
+  #     - type: bind
+  #       source: /ollama-entrypoint.sh
+  #       target: /root/.ollama
+  #     - ollama:/root/.ollama
+  #   ports:
+  #     - "11434:11434"
+  #   restart: always
+  #   networks:
+  #     - msf-network
 
-  analyzer:
-    image: ${DOCKER_REGISTRY-}ai-analyzer
-    depends_on:
-      - ollama
-    ports:
-      - "8001:8000/tcp"
+  # analyzer:
+  #   image: ${DOCKER_REGISTRY-}ai-analyzer
+  #   depends_on:
+  #     - ollama
+  #   ports:
+  #     - "8080:8080/tcp"
+  #   build:
+  #     context: .
+  #     dockerfile: analyzer/ai-analyzer.Dockerfile
+  #   environment:
+  #     - API_PORT=8080
+  #     - LLM_MODEL=llama3.2
+  #     - VECTORSTORE_PATH=./chroma_db
+  #     - LLM_OUTPUT_TOKEN_LIMIT=120
+  #     - OLLAMA_HOST=http://ollama:11434/
+  #   networks:
+  #     - msf-network
+
+  java-app:
     build:
-      context: .
-      dockerfile: analyzer/ai-analyzer.Dockerfile
-    environment:
-      - API_PORT=8000
-      - LLM_MODEL=llama3.2
-      - VECTORSTORE_PATH=./chroma_db
-      - LLM_OUTPUT_TOKEN_LIMIT=120
-      - OLLAMA_HOST=http://ollama:11434/
+      context: ./project
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8080" # Host:Container. Assumes Java app in container listens on 8080
+    container_name: java-app-container
+    restart: unless-stopped
     networks:
       - msf-network
 
