@@ -23,7 +23,6 @@ services:
       POSTGRES_DB: msf
     ports:
       - "55553:55553"
-    # Use msfconsole with a resource script instead of msfrpcd
     entrypoint: ["./msfconsole", "-q", "-x", "load msgrpc ServerHost=0.0.0.0 ServerPort=55553 User=msf Pass=msf SSL=false; sleep 3600"]
     working_dir: /usr/src/metasploit-framework
     stdin_open: true
@@ -43,11 +42,11 @@ services:
       - MSF_PORT=55553
       - MSF_USER=msf
       - MSF_PASS=msf
-      - TARGET_HOST=8.8.8.8  # Default target for examples
-      - PORT=8000            # FastAPI port
+      - TARGET_HOST=8.8.8.8
+      - PORT=8000
       - LOG_LEVEL=INFO
     ports:
-      - "8000:8000"          # Expose FastAPI port
+      - "8000:8000"
     restart: on-failure
     networks:
       - msf-network
@@ -57,6 +56,40 @@ services:
       timeout: 10s
       retries: 5
 
+  ollama:
+    pull_policy: always
+    build:
+      context: .
+      dockerfile: ollama.Dockerfile
+    volumes:
+      - type: bind
+        source: /ollama-entrypoint.sh
+        target: /root/.ollama
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    restart: always
+    networks:
+      - msf-network
+
+  analyzer:
+    image: ${DOCKER_REGISTRY-}ai-analyzer
+    depends_on:
+      - ollama
+    ports:
+      - "8001:8000/tcp"
+    build:
+      context: .
+      dockerfile: analyzer/ai-analyzer.Dockerfile
+    environment:
+      - API_PORT=8000
+      - LLM_MODEL=llama3.2
+      - VECTORSTORE_PATH=./chroma_db
+      - LLM_OUTPUT_TOKEN_LIMIT=120
+      - OLLAMA_HOST=http://ollama:11434/
+    networks:
+      - msf-network
+
 networks:
   msf-network:
     driver: bridge
@@ -64,3 +97,4 @@ networks:
 volumes:
   msf-db:
   msf-data:
+  ollama: {}

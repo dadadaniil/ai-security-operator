@@ -20,6 +20,9 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+
+/analyzer/chroma_db
+
 /project/target/
 /.venv/
 /.idea/
