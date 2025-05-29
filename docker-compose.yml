@@ -50,6 +50,7 @@ services:
     restart: on-failure
     networks:
       - msf-network
+      - application_network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
@@ -90,20 +91,22 @@ services:
   #   networks:
   #     - msf-network
 
-  java-app:
-    build:
-      context: ./project
-      dockerfile: Dockerfile
-    ports:
-      - "8082:8080" # Host:Container. Assumes Java app in container listens on 8080
-    container_name: java-app-container
-    restart: unless-stopped
-    networks:
-      - msf-network
+  # java-app:
+  #   build:
+  #     context: ./project
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8082:8080" # Host:Container. Assumes Java app in container listens on 8080
+  #   container_name: java-app-container
+  #   restart: unless-stopped
+  #   networks:
+  #     - msf-network
 
 networks:
   msf-network:
     driver: bridge
+  application_network:
+    external: true
 
 volumes:
   msf-db:

@@ -1,20 +1,27 @@
-# Use an official OpenJDK 17 runtime as a parent image (slim version for smaller size)
-FROM openjdk:17-slim-buster
+# Use a base image with Maven and Java 21 installed
+FROM maven:3.9.6-amazoncorretto-21 AS build
 
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy the packaged JAR file from your project's target directory into the container's /app directory
-# The JAR file name is based on your pom.xml (artifactId-version-jar-with-dependencies.jar)
-COPY target/Practice8-1.0-SNAPSHOT-jar-with-dependencies.jar .
+# Copy the Maven project definition files to the container
+COPY pom.xml .
+COPY src ./src
 
-# Copy the resources directory
-COPY src/main/resources src/main/resources
+# Build the application using Maven
+RUN mvn clean package -DskipTests
 
-# Expose the port the application runs on.
-# I'm assuming port 8080 here. If your application uses a different port,
-# you'll need to change this value.
+# Create a new stage for the final image
+FROM amazoncorretto:21-alpine3.18
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy the packaged JAR file from the previous stage
+COPY --from=build "/app/target/utask-java.jar" "./utask-java.jar"
+
+# Expose the port that the application runs on
 EXPOSE 8080
 
-# Define the command to run your application when the container starts
-ENTRYPOINT ["java", "-jar", "Practice8-1.0-SNAPSHOT-jar-with-dependencies.jar"] 
+# Define the command to run your application
+CMD ["java", "-jar", "utask-java.jar"]

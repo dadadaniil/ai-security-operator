@@ -4,15 +4,18 @@ import java.util.Scanner;
 
 public class PurchaseFactory {
     public static Purchase createPurchase(Scanner scanner) {
-        String name = scanner.next();
-        int price = Integer.parseInt(scanner.next());
-        int quantity = Integer.parseInt(scanner.next());
-        
-        if (scanner.hasNextInt()) {
-            int discount = Integer.parseInt(scanner.next());
-            return new PricePurchase(name, new Euro(price), quantity, new Euro(discount));
-        } else {
-            return new Purchase(name, new Euro(price), quantity);
+        String line = scanner.nextLine();
+        String[] data = line.split(";");
+        switch (data.length) {
+            case 3 -> {
+
+                return new Purchase(data[0], new Euro(Integer.parseInt(data[2])),Integer.parseInt(data[3]));
+            }
+            case 4 -> {
+
+                return new PricePurchase((data[0]), new Euro(Integer.parseInt(data[2])),Integer.parseInt(data[3]),new Euro(Integer.parseInt(data[4])));
+            }
+            default -> throw new IllegalStateException("Unexpected value: " + data.length);
         }
     }
 }
