@@ -8,6 +8,8 @@ services:
     volumes:
       - msf-db:/var/lib/postgresql/data
     restart: unless-stopped
+    ports:
+      - "5433:5432"
     networks:
       - msf-network
 
@@ -42,7 +44,7 @@ services:
       - MSF_PORT=55553
       - MSF_USER=msf
       - MSF_PASS=msf
-      - TARGET_HOST=8.8.8.8
+      - TARGET_HOST=backend
       - PORT=8081
       - LOG_LEVEL=INFO
     ports:
