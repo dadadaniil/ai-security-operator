@@ -14,4 +14,6 @@ RUN rm api/.env
 
 ENV PYTHONPATH "${PYTHONPATH}:/api"
 
+# todo env variable or smth
+#CMD pysmee forward https://smee.io/MQFI8eHvKVJBzDD8 http://localhost:8000/hook/github & python api/main.py
 CMD ["python", "api/main.py"]
