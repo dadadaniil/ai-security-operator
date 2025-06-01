@@ -1,32 +1,36 @@
 services:
-  ollama:
-    pull_policy: always
-    build:
-      context: .
-      dockerfile: ollama.Dockerfile
-    volumes:
-      - type: bind
-        source: /ollama-entrypoint.sh
-        target: /root/.ollama
-    ports:
-      - "11434:11434"
-    restart: always
 
-  analyzer:
-    image: ${DOCKER_REGISTRY-}ai-analyzer
-    depends_on:
-      - ollama
-    ports:
-      - "8000:8000/tcp"
-    build:
-      context: .
-      dockerfile: analyzer/ai-analyzer.Dockerfile
+  github-bot:
+    build: ./github-bot
     environment:
-      - API_PORT=8000
-      - LLM_MODEL=llama3.2
-      - VECTORSTORE_PATH=./chroma_db
-      - LLM_OUTPUT_TOKEN_LIMIT=120
-      - OLLAMA_HOST=http://ollama:11434/
+      - GITHUB_APP_ID=github_app_id
+      - GITHUB_PRIVATE_KEY='RSA PRIVATE KEY TODO'
+      - GITHUB_INSTALLATION_ID=your_github_installation_id
+      - GITHUB_WEBHOOK_SECRET=whyDamnSOSecured?!
+      - COMMAND_PREFIX=!run-check
+      - EXTERNAL_SERVICE_URL=http://analyzer:8000/api/command
+      - PORT=3000
+      - LOG_LEVEL=INFO
+    ports:
+      - "3000:3000"
+    networks:
+      - msf-network
+    restart: on-failure
+
+  smee-client:
+    image: node:18-alpine
+    restart: unless-stopped 
+    command: >
+      sh -c "npm install --global smee-client && 
+             smee -u https://smee.io/MQFI8eHvKVJBzDD8 -t http://github-bot:3000/webhook"
+    networks:
+      - msf-network
+    depends_on:
+      - github-bot
+
+networks:
+  msf-network:
+    driver: bridge
 
 volumes:
   ollama: {}
