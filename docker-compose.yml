@@ -1,32 +1,116 @@
 services:
-  ollama:
-    pull_policy: always
-    build:
-      context: .
-      dockerfile: ollama.Dockerfile
-    volumes:
-      - type: bind
-        source: /ollama-entrypoint.sh
-        target: /root/.ollama
-    ports:
-      - "11434:11434"
-    restart: always
-
-  analyzer:
-    image: ${DOCKER_REGISTRY-}ai-analyzer
-    depends_on:
-      - ollama
-    ports:
-      - "8000:8000/tcp"
-    build:
-      context: .
-      dockerfile: analyzer/ai-analyzer.Dockerfile
+  db:
+    image: postgres:13-alpine
     environment:
-      - API_PORT=8000
-      - LLM_MODEL=llama3.2
-      - VECTORSTORE_PATH=./chroma_db
-      - LLM_OUTPUT_TOKEN_LIMIT=120
-      - OLLAMA_HOST=http://ollama:11434/
+      POSTGRES_USER: msf
+      POSTGRES_PASSWORD: msf
+      POSTGRES_DB: msf
+    volumes:
+      - msf-db:/var/lib/postgresql/data
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    networks:
+      - msf-network
+
+  metasploit:
+    image: metasploitframework/metasploit-framework:latest
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://msf:msf@db:5432/msf
+      POSTGRES_HOST: db
+      POSTGRES_USER: msf
+      POSTGRES_PASSWORD: msf
+      POSTGRES_DB: msf
+    ports:
+      - "55553:55553"
+    entrypoint: ["./msfconsole", "-q", "-x", "load msgrpc ServerHost=0.0.0.0 ServerPort=55553 User=msf Pass=msf SSL=false; sleep 3600"]
+    working_dir: /usr/src/metasploit-framework
+    stdin_open: true
+    tty: true
+    volumes:
+      - msf-data:/home/msf/.msf4
+    restart: unless-stopped
+    networks:
+      - msf-network
+
+  exploiter:
+    build: ./exploiter
+    depends_on:
+      - metasploit
+    environment:
+      - MSF_HOST=metasploit
+      - MSF_PORT=55553
+      - MSF_USER=msf
+      - MSF_PASS=msf
+      - TARGET_HOST=backend
+      - PORT=8081
+      - LOG_LEVEL=INFO
+    ports:
+      - "8081:8000"
+    restart: on-failure
+    networks:
+      - msf-network
+      - application_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ollama:
+  #   pull_policy: always
+  #   build:
+  #     context: .
+  #     dockerfile: ollama.Dockerfile
+  #   volumes:
+  #     - type: bind
+  #       source: /ollama-entrypoint.sh
+  #       target: /root/.ollama
+  #     - ollama:/root/.ollama
+  #   ports:
+  #     - "11434:11434"
+  #   restart: always
+  #   networks:
+  #     - msf-network
+
+  # analyzer:
+  #   image: ${DOCKER_REGISTRY-}ai-analyzer
+  #   depends_on:
+  #     - ollama
+  #   ports:
+  #     - "8080:8080/tcp"
+  #   build:
+  #     context: .
+  #     dockerfile: analyzer/ai-analyzer.Dockerfile
+  #   environment:
+  #     - API_PORT=8080
+  #     - LLM_MODEL=llama3.2
+  #     - VECTORSTORE_PATH=./chroma_db
+  #     - LLM_OUTPUT_TOKEN_LIMIT=120
+  #     - OLLAMA_HOST=http://ollama:11434/
+  #   networks:
+  #     - msf-network
+
+  # java-app:
+  #   build:
+  #     context: ./project
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8082:8080" # Host:Container. Assumes Java app in container listens on 8080
+  #   container_name: java-app-container
+  #   restart: unless-stopped
+  #   networks:
+  #     - msf-network
+
+networks:
+  msf-network:
+    driver: bridge
+  application_network:
+    external: true
 
 volumes:
+  msf-db:
+  msf-data:
   ollama: {}

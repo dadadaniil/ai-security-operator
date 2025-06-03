@@ -28,3 +28,5 @@ TestResults.xml
 /.idea/
 /exporter/uploads
 /exporter/export
+/.cursor/rules
+**/__pycache__

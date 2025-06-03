@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/Practice8.iml" filepath="$PROJECT_DIR$/Practice8.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ai-security-operator.iml" filepath="$PROJECT_DIR$/.idea/ai-security-operator.iml" />
     </modules>
   </component>
 </project>

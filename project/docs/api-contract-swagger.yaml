@@ -1,0 +1,758 @@
+openapi: 3.0.1
+info:
+    title: ESDE Student's Hub
+    version: '1.0'
+tags:
+    -   name: users
+        description: Perform operations with users
+    -   name: tasks
+        description: Perform operations with tasks as Implementer
+    -   name: tasks-creators
+        description: Perform operations with tasks as Author
+    -   name: tags
+        description: Tags that can be assigned to tasks
+    -   name: task-types
+        description: Uses with tasks
+paths:
+    /api/users/signup:
+        post:
+            tags:
+                - users
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/userRegistrationDto'
+            responses:
+                201:
+                    description: Create User based on registration details provided
+    /api/users/signin:
+        post:
+            tags:
+                - users
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/userLoginDto'
+            responses:
+                '200':
+                    description: Success
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/LoginResponse'
+    /api/users/confirm/email:
+        post:
+            tags:
+                - users
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/userConfirmEmailDto'
+            responses:
+                '200':
+                    description: Confirm user registration based on provided token
+    /api/users/reset/password:
+        post:
+            tags:
+                - users
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/userResetPasswordPostDto'
+            responses:
+                '200':
+                    description: Request token to user email for password resetting
+        put:
+            tags:
+                - users
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/userResetPasswordPutDto'
+            responses:
+                '200':
+                    description: Update user password using new passord and token, retrieved using email
+    /api/users/refresh:
+        post:
+            tags:
+                - users
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/userRefreshDto'
+            responses:
+                '200':
+                    description: Get a new access token
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/LoginResponse'
+                '403':
+                    description: Invalid or expired refresh token
+    /api/tasks:
+        post:
+            tags:
+                - tasks-creators
+            summary: Create a task
+            operationId: createTask
+            requestBody:
+                $ref: '#/components/requestBodies/TaskBody'
+            responses:
+                '200':
+                    description: Task successfully created
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SuccessWrapper'
+                '400':
+                    description: Validation exception
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/FailureWrapper'
+                        application/xml:
+                            schema:
+                                $ref: '#/components/schemas/FailureWrapper'
+        get:
+            summary: DRAFT Find tasks by filters
+            description: DRAFT
+            operationId: searchTasks
+            parameters:
+                -   name: pageNum
+                    in: query
+                    required: false
+                    schema:
+                        type: number
+                        default: 1
+                -   name: pageSize
+                    in: query
+                    required: false
+                    schema:
+                        type: number
+                        default: 10
+            responses:
+                '200':
+                    description: found task
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PaginatedTasksSuccessWrapper'
+
+    /api/tasks/{id}:
+        get:
+            tags:
+                - tasks
+            summary: Get a task by id
+            operationId: getTaskId
+            parameters:
+                -   name: id
+                    in: path
+                    required: true
+                    schema:
+                        type: number
+                        default: 1
+            responses:
+                '200':
+                    description: Task successfully created
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/TasksSuccessWrapper'
+                '400':
+                    description: Validation exception
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/FailureWrapper'
+                        application/xml:
+                            schema:
+                                $ref: '#/components/schemas/FailureWrapper'
+
+    /api/creators/tasks:
+        get:
+            tags:
+                - tasks-creators
+            summary: Get created tasks
+            description: Get tasks of current creator (take author id from header JWT token)
+            operationId: getCreatedTasks
+            parameters:
+                -   name: pageNum
+                    in: query
+                    required: false
+                    schema:
+                        type: number
+                        default: 1
+                -   name: pageSize
+                    in: query
+                    required: false
+                    schema:
+                        type: number
+                        default: 10
+            responses:
+                '200':
+                    description: found tasks
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PaginatedCreatedTasksSuccessWrapper'
+
+    /api/implementors/tasks:
+        get:
+            tags:
+                - tasks
+            summary: Get assigned tasks
+            description: Get assigned tasks of current implementor (get id from header JWT token)
+            parameters:
+                -   name: pageNum
+                    in: query
+                    required: false
+                    schema:
+                        type: number
+                        default: 1
+                -   name: pageSize
+                    in: query
+                    required: false
+                    schema:
+                        type: number
+                        default: 10
+            responses:
+                '200':
+                    description: found tasks
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PaginatedAssignedTasksSuccessWrapper'
+    /api/tags:
+        get:
+            tags:
+                - tags
+            summary: Get all tags
+            parameters:
+                - name: pageNum
+                  in: query
+                  required: false
+                  schema:
+                      type: integer
+                      default: 1
+                - name: pageSize
+                  in: query
+                  required: false
+                  schema:
+                      type: integer
+                      default: 10
+            responses:
+                '200':
+                    description: found tags
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AllTagsSuccessWrapper'
+    /api/types:
+        get:
+            tags:
+                - task-types
+            summary: Get all task types
+            parameters:
+                - name: pageNum
+                  in: query
+                  required: false
+                  schema:
+                      type: integer
+                      default: 1
+                - name: pageSize
+                  in: query
+                  required: false
+                  schema:
+                      type: integer
+                      default: 10
+            responses:
+                '200':
+                    description: found tags
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AllTaskTypeResponseWrapper'
+
+components:
+    schemas:
+        SuccessWrapper:
+            type: object
+            properties:
+                data:
+                    type: object
+                    properties:
+                        id:
+                            type: string
+                            example: "15"
+                isSuccess:
+                    type: boolean
+                    example: true
+                message:
+                    type: string
+                    example: OK
+                errors:
+                    type: array
+                    items:
+                        type: string
+                        example: empty_array
+                statusCode:
+                    type: number
+                    example: 200
+        FailureWrapper:
+            type: object
+            properties:
+                data:
+                    type: object
+                isSuccess:
+                    type: boolean
+                    example: false
+                message:
+                    type: string
+                    example: ""
+                errors:
+                    type: array
+                    items:
+                        type: string
+                        example: validation error
+                statusCode:
+                    type: number
+                    example: 422
+        userLightDto:
+            type: object
+            properties:
+                id:
+                    type: string
+                    example: "1"
+                    nullable: false
+                email:
+                    type: string
+                    nullable: false
+                    example: "test@email.com"
+                firstName:
+                    type: string
+                    nullable: false
+                    example: "Name"
+                lastName:
+                    type: string
+                    nullable: false
+                    example: "Lastname"
+        userLoginDto:
+            type: object
+            properties:
+                email:
+                    type: string
+                    nullable: false
+                password:
+                    type: string
+                    nullable: false
+            additionalProperties: false
+        userRegistrationDto:
+            type: object
+            properties:
+                email:
+                    type: string
+                    nullable: false
+                firstName:
+                    type: string
+                    nullable: false
+                lastName:
+                    type: string
+                    nullable: false
+                password:
+                    type: string
+                    nullable: false
+                role:
+                    type: number
+                    nullable: false
+            additionalProperties: false
+        userConfirmEmailDto:
+            type: object
+            properties:
+                token:
+                    type: string
+                    nullable: false
+            additionalProperties: false
+        userResetPasswordPostDto:
+            type: object
+            properties:
+                email:
+                    type: string
+                    nullable: false
+            additionalProperties: false
+        userResetPasswordPutDto:
+            type: object
+            properties:
+                password:
+                    type: string
+                    nullable: false
+                token:
+                    type: string
+                    nullable: false
+            additionalProperties: false
+        userRefreshDto:
+            type: object
+            properties:
+                token:
+                    type: string
+                    nullable: false
+        LoginResponse:
+            type: object
+            properties:
+                data:
+                    type: object
+                    properties:
+                        id:
+                            type: string
+                            example: "1000"
+                        credentials:
+                            type: object
+                            properties:
+                                accessToken:
+                                    type: string
+                                    example: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI2IiwiaWF0IjoxNzE2ODA0NjM2LCJleHAiOjE3MTY4MDgyMzZ9.O-6iqpeZvhIlakuZE8g4GdZrLp51DHNn8kTecg1mbHc"
+                                refreshToken:
+                                    type: string
+                                    example: "93cc4cb8-95e4-442a-bc3b-20d664981e36"
+                                accessTokenExpiresIn:
+                                    type: string
+                                    example: 2024-05-27T13:10:36
+                                refreshTokenExpiresIn:
+                                    type: string
+                                    example: 2024-06-06T12:10:36
+                isSuccess:
+                    type: boolean
+                    example: true
+                message:
+                    type: string
+                    example: OK
+                errors:
+                    type: array
+                    items:
+                        type: string
+                statusCode:
+                    type: number
+                    example: 200
+        PaginatedCreatedTasksSuccessWrapper:
+            type: object
+            properties:
+                data:
+                    type: object
+                    properties:
+                        total:
+                            type: number
+                            example: 1000
+                        next:
+                            type: string
+                            example: https://<server>/api/creators/tasks/?pageSize=10&pageNum=2
+                        previous:
+                            type: string
+                            example: null
+                        results:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/TaskResponse'
+                isSuccess:
+                    type: boolean
+                    example: true
+                message:
+                    type: string
+                    example: OK
+                errors:
+                    type: array
+                    items:
+                        type: string
+                        example: empty_array
+                statusCode:
+                    type: number
+                    example: 200
+        PaginatedAssignedTasksSuccessWrapper:
+            type: object
+            properties:
+                data:
+                    type: object
+                    properties:
+                        total:
+                            type: number
+                            example: 1000
+                        next:
+                            type: string
+                            example: https://<server>/api/creators/tasks/?pageSize=10&pageNum=2
+                        previous:
+                            type: string
+                            example: null
+                        results:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/TaskResponse'
+                isSuccess:
+                    type: boolean
+                    example: true
+                message:
+                    type: string
+                    example: OK
+                errors:
+                    type: array
+                    items:
+                        type: string
+                        example: empty_array
+                statusCode:
+                    type: number
+                    example: 200
+        TasksSuccessWrapper:
+            type: object
+            properties:
+                data:
+                    $ref: '#/components/schemas/TaskFullResponse'
+                isSuccess:
+                    type: boolean
+                    example: true
+                message:
+                    type: string
+                    example: OK
+                errors:
+                    type: array
+                    items:
+                        type: string
+                        example: empty_array
+                statusCode:
+                    type: number
+                    example: 200
+        PaginatedTasksSuccessWrapper:
+            type: object
+            properties:
+                data:
+                    type: object
+                    properties:
+                        total:
+                            type: number
+                            example: 1000
+                        next:
+                            type: string
+                            example: https://<server>/api/tasks/?pageSize=10&pageNum=2
+                        previous:
+                            type: string
+                            example: null
+                        results:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/TaskResponse'
+                isSuccess:
+                    type: boolean
+                    example: true
+                message:
+                    type: string
+                    example: OK
+                errors:
+                    type: array
+                    items:
+                        type: string
+                        example: empty_array
+                statusCode:
+                    type: number
+                    example: 200
+        TaskResponse:
+            type: object
+            properties:
+                title:
+                    type: string
+                    example: string
+                description:
+                    type: string
+                    example: long string description
+                paymentAmount:
+                    description: Payment amount can be decimal
+                    type: number
+                    example: 5
+                tags:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/TagResponse'
+                creatorPublicContacts:
+                    type: string
+                    example: email,tel...
+                creator:
+                    type: object
+                    properties:
+                        id:
+                            type: string
+                            example: "1"
+                type:
+                    $ref: '#/components/schemas/TaskTypeResponse'
+                deadline:
+                    type: string
+                    example: 2024-04-16T13:16:45.972Z
+        TaskFullResponse:
+            type: object
+            properties:
+                id: 
+                    type: string
+                    example: "1"
+                title:
+                    type: string
+                    example: string
+                description:
+                    type: string
+                    example: long string description
+                paymentAmount:
+                    type: number
+                    example: 5
+                tags:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/TagResponse'
+                creatorPublicContacts:
+                    type: string
+                    example: email,tel...
+                creator:
+                    $ref: '#/components/schemas/userLightDto'
+                type:
+                    $ref: '#/components/schemas/TaskTypeResponse'
+                deadline:
+                    type: string
+                    example: 2024-04-16T13:16:45.972Z
+        TagResponse:
+            type: object
+            properties:
+                id:
+                    type: string
+                    example: "3"
+                name:
+                    type: string
+                    example: Mobile
+        AllTagsSuccessWrapper:
+            type: object
+            properties:
+                data:
+                    type: object
+                    properties:
+                        total:
+                            type: number
+                            example: 1000
+                        next:
+                            type: string
+                            example: https://<server>/api/tags?pageSize=10&pageNum=2
+                        previous:
+                            type: string
+                            example: null
+                        results:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/TagResponse'
+                isSuccess:
+                    type: boolean
+                    example: true
+                message:
+                    type: string
+                    example: OK
+                errors:
+                    type: array
+                    items:
+                        type: string
+                        example: empty_array
+                statusCode:
+                    type: number
+                    example: 200
+        TaskTypeResponse:
+            type: object
+            properties:
+                id:
+                    type: string
+                    example: "3"
+                name:
+                    type: string
+                    example: Individual
+                description:
+                    type: string
+                    example: Your task will be performed by a single person.
+        AllTaskTypeResponseWrapper:
+            type: object
+            properties:
+                data:
+                    type: object
+                    properties:
+                        total:
+                            type: number
+                            example: 1000
+                        next:
+                            type: string
+                            example: https://<server>/api/types?pageSize=10&pageNum=2
+                        previous:
+                            type: string
+                            example: null
+                        results:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/TaskTypeResponse'
+                isSuccess:
+                    type: boolean
+                    example: true
+                message:
+                    type: string
+                    example: OK
+                errors:
+                    type: array
+                    items:
+                        type: string
+                        example: empty_array
+                statusCode:
+                    type: number
+                    example: 200
+
+    requestBodies:
+        TaskBody:
+            description: Task request body
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        required:
+                            - title
+                            - description
+                            - paymentAmount
+                            - tags
+                            - creatorPublicContacts
+                            - creator
+                            - type
+                            - deadline
+                        properties:
+                            title:
+                                type: string
+                                example: string
+                            description:
+                                type: string
+                                example: long description
+                            paymentAmount:
+                                type: number
+                                example: 5
+                            tags:
+                                type: array
+                                items:
+                                    type: object
+                                    properties:
+                                        id:
+                                            type: string
+                                            example: "3"
+                            creatorPublicContacts:
+                                type: string
+                                example: email,tel...
+                            creator:
+                                type: object
+                                properties:
+                                    id:
+                                        type: string
+                                        example: "1"
+                            type:
+                                type: object
+                                properties:
+                                    id:
+                                        type: string
+                                        example: "2"
+                            deadline:
+                                type: string
+                                example: 2024-04-16T13:16:45.972Z
