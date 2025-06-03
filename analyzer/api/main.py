@@ -4,7 +4,7 @@ from fastapi.openapi.utils import get_openapi
 
 from api import logs
 from api.env import API_PORT
-from api.routers import document_router, generation_router
+from api.routers import document_router, generation_router, hook_router
 
 logger = logs.get_logger(__name__)
 
@@ -25,6 +25,7 @@ def custom_openapi():
 app.openapi = custom_openapi
 app.include_router(document_router.router)
 app.include_router(generation_router.router)
+app.include_router(hook_router.router)
 
 
 if __name__ == "__main__":
