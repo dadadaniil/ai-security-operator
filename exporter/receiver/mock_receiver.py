@@ -1,11 +1,12 @@
 import os
 from flask import Flask, request, jsonify
+from payload_parser import PayloadParser
 
 app = Flask(__name__)
 UPLOAD_FOLDER = '/uploads'
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+payload_file_parser = PayloadParser(upload_folder=UPLOAD_FOLDER)
 
 @app.route('/api/upload-graph', methods=['POST'])
 def upload_graph():
@@ -15,24 +16,29 @@ def upload_graph():
     if not request.data:
         return jsonify({"status": "error", "message": "No data received"}), 400
 
-    file_size = len(request.data)
-    print(f"Received file. Content-Type: {request.content_type}, Size: {file_size} bytes")
+    success, saved_filename, file_size, message = payload_file_parser.parse_and_save(
+        request_data_bytes=request.data,
+        content_type_header=request.content_type,
+        http_headers=request.headers
+    )
 
-    try:
-        save_path = os.path.join(UPLOAD_FOLDER, 'received_graph.json')
-        with open(save_path, 'wb') as f:
-            f.write(request.data)
-        print(f"Saved received file to {save_path}")
-    except IOError as e:
-        print(f"Error saving received file: {e}")
-        return jsonify({"status": "error", "message": f"Could not save file on server: {e}"}), 500
-
-    return jsonify({
-        "status": "received",
-        "size": file_size,
-        "message": "Graph data received successfully."
-    }), 200
+    if success:
+        print(f"Receiver: Successfully processed and saved file: {saved_filename}, Size: {file_size} bytes")
+        return jsonify({
+            "status": "received_and_processed",
+            "saved_filename": saved_filename,
+            "size": file_size,
+            "message": message # Message from parser
+        }), 200
+    else:
+        print(f"Receiver: Error processing/saving file. Parser message: {message}")
+        return jsonify({
+            "status": "error",
+            "message": f"Server error during processing: {message}"
+        }), 500
 
 
 if __name__ == '__main__':
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    print(f"Mock receiver started. Uploads will be saved to: {os.path.abspath(UPLOAD_FOLDER)}")
     app.run(debug=True, host='0.0.0.0', port=5000)
