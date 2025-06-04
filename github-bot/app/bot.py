@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from typing import Dict, Any
@@ -29,9 +30,12 @@ logger = get_logger(__name__)
 
 app = FastAPI()
 
-# Configuration
-GITHUB_APP_ID = os.getenv('GITHUB_APP_ID', 'github_app_id')
-GITHUB_PRIVATE_KEY = os.getenv('GITHUB_PRIVATE_KEY', 'github_private_key')
+GITHUB_APP_ID = os.getenv('GITHUB_APP_ID')
+GITHUB_PRIVATE_KEY = os.getenv('GITHUB_PRIVATE_KEY').strip('"')
+GITHUB_PRIVATE_KEY = str.replace(GITHUB_PRIVATE_KEY, '\\n', '\n')
+
+
+octokit = Octokit(auth='installation', app_id=GITHUB_APP_ID, private_key=GITHUB_PRIVATE_KEY)
 
 
 @app.post('/webhook')
@@ -49,35 +53,42 @@ async def handle_webhook(request: Request):
     event = request.headers.get('x-github-event')
     payload = await request.json()
 
+    logger.info(payload)
+
+    # wtf
+    payload = json.loads(payload.get('payload'))
+
     action = payload.get('action')
 
-    for x in payload:
-        logger.info(x)
-    # logger.info(f'handling {event} - {payload}')
+
+    logger.info(f'handling {event} - {action}')
 
     if event == 'issue_comment' and action == 'created':
-        await handle_issue_comment(payload)
+        handle_issue_comment(payload)
 
     return {"status": "processed"}
 
 
-async def handle_issue_comment(payload: Dict[str, Any]):
-    """Handle issue comment events using Octokit.py"""
+def handle_issue_comment(payload: Dict[str, Any]):
     comment = payload['comment']
     issue = payload['issue']
     repo = payload['repository']
 
-    # Initialize Octokit client
-    octokit = Octokit(auth='app', app_id=GITHUB_APP_ID, private_key=GITHUB_PRIVATE_KEY)
+    body = comment['body']
+    if str.startswith(body, '/unit'):
+        response_message = f"@{comment['user']['login']}, I will generate unit-tests and respond with new PR url."
+    else:
+        return
 
-    # Post response comment
-    response_message = f"👋 Thanks for your comment @{comment['user']['login']}! You said: \n\n> {comment['body']}"
+    owner = repo['owner']['login']
+    repo_name = repo['name']
+    issue_number = issue['number']
 
-    logger.info(response_message)
-
-    await octokit.rest.issues.create_comment(
-        owner=repo['owner']['login'],
-        repo=repo['name'],
-        issue_number=issue['number'],
+    octokit.issues.create_comment(
+        owner=owner,
+        repo=repo_name,
+        issue_number=issue_number,
         body=response_message
     )
+
+    logger.info(f"Created comment: {owner} {repo_name} {issue_number} {response_message}")
