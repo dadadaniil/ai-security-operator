@@ -59,50 +59,28 @@ services:
       timeout: 10s
       retries: 5
 
-  # ollama:
-  #   pull_policy: always
-  #   build:
-  #     context: .
-  #     dockerfile: ollama.Dockerfile
-  #   volumes:
-  #     - type: bind
-  #       source: /ollama-entrypoint.sh
-  #       target: /root/.ollama
-  #     - ollama:/root/.ollama
-  #   ports:
-  #     - "11434:11434"
-  #   restart: always
-  #   networks:
-  #     - msf-network
+  github-bot:
+    build: ./github-bot
+    env_file:
+      - ./github-bot.env
+    environment:
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    networks:
+      - msf-network
+    restart: on-failure
 
-  # analyzer:
-  #   image: ${DOCKER_REGISTRY-}ai-analyzer
-  #   depends_on:
-  #     - ollama
-  #   ports:
-  #     - "8080:8080/tcp"
-  #   build:
-  #     context: .
-  #     dockerfile: analyzer/ai-analyzer.Dockerfile
-  #   environment:
-  #     - API_PORT=8080
-  #     - LLM_MODEL=llama3.2
-  #     - VECTORSTORE_PATH=./chroma_db
-  #     - LLM_OUTPUT_TOKEN_LIMIT=120
-  #     - OLLAMA_HOST=http://ollama:11434/
-  #   networks:
-  #     - msf-network
-
-  # java-app:
-  #   build:
-  #     context: ./project
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "8082:8080" # Host:Container. Assumes Java app in container listens on 8080
-  #   container_name: java-app-container
-  #   restart: unless-stopped
-  #   networks:
-  #     - msf-network
+  smee-client:
+    image: node:18-alpine
+    restart: unless-stopped
+    command: >
+      sh -c "npm install --global smee-client && 
+             smee -u https://smee.io/MQFI8eHvKVJBzDD8 -t http://github-bot:3000/webhook"
+    networks:
+      - msf-network
+    depends_on:
+      - github-bot
 
 networks:
   msf-network:

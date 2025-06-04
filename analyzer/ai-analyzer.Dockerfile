@@ -10,7 +10,6 @@ RUN --mount=type=cache,target=/root/.cache \
 RUN apt-get install curl -y
 
 COPY analyzer/. .
-RUN rm api/.env
 
 ENV PYTHONPATH "${PYTHONPATH}:/api"
 
