@@ -28,3 +28,6 @@ TestResults.xml
 /.idea/
 /exporter/uploads
 /exporter/export
+
+**.idea
+**.env

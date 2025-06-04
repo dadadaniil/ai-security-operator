@@ -2,15 +2,10 @@ services:
 
   github-bot:
     build: ./github-bot
+    env_file:
+      - ./github-bot.env
     environment:
-      - GITHUB_APP_ID=github_app_id
-      - GITHUB_PRIVATE_KEY='RSA PRIVATE KEY TODO'
-      - GITHUB_INSTALLATION_ID=your_github_installation_id
-      - GITHUB_WEBHOOK_SECRET=whyDamnSOSecured?!
-      - COMMAND_PREFIX=!run-check
-      - EXTERNAL_SERVICE_URL=http://analyzer:8000/api/command
       - PORT=3000
-      - LOG_LEVEL=INFO
     ports:
       - "3000:3000"
     networks:
