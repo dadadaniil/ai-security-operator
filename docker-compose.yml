@@ -25,7 +25,7 @@ services:
       POSTGRES_DB: msf
     ports:
       - "55553:55553"
-    entrypoint: ["./msfconsole", "-q", "-x", "load msgrpc ServerHost=0.0.0.0 ServerPort=55553 User=msf Pass=msf SSL=false; sleep 3600"]
+    entrypoint: ["./msfconsole", "-q", "-x", "load msgrpc ServerHost=0.0.0.0 ServerPort=55553 User=msf Pass=msf SSL=false"]
     working_dir: /usr/src/metasploit-framework
     stdin_open: true
     tty: true
@@ -48,13 +48,13 @@ services:
       - PORT=8081
       - LOG_LEVEL=INFO
     ports:
-      - "8081:8000"
+      - "8081:8081"
     restart: on-failure
     networks:
       - msf-network
       - application_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8081/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 5
