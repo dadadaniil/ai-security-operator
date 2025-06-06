@@ -56,7 +56,8 @@ async def handle_webhook(request: Request):
     # logger.info(f'handling {event} - {payload}')
 
     if event == 'issue_comment' and action == 'created':
-        await handle_issue_comment(payload)
+        handle_issue_comment(payload)
+    # not reacting to push events because uploading too sloow
 
     return {"status": "processed"}
 
@@ -67,17 +68,64 @@ async def handle_issue_comment(payload: Dict[str, Any]):
     issue = payload['issue']
     repo = payload['repository']
 
-    # Initialize Octokit client
-    octokit = Octokit(auth='app', app_id=GITHUB_APP_ID, private_key=GITHUB_PRIVATE_KEY)
+    owner = repo['owner']['login']
+    repo_name = repo['name']
+    issue_number = issue['number']
 
-    # Post response comment
-    response_message = f"👋 Thanks for your comment @{comment['user']['login']}! You said: \n\n> {comment['body']}"
+    body = comment['body']
+    if str.startswith(body, '/requirements'):
+        try:
+            # todo call analyzer (post body of issue (saved as some file) to technical requirements endpoint)
 
-    logger.info(response_message)
+            response_message = f"@{comment['user']['login']}, uploading issue text as technical requirements for the project."
+        except Exception as e:
+            response_message = f"@{comment['user']['login']}, failed uploading issue text as technical requirements for the project: {str(e)}."
 
-    await octokit.rest.issues.create_comment(
-        owner=repo['owner']['login'],
-        repo=repo['name'],
-        issue_number=issue['number'],
-        body=response_message
-    )
+        octokit.issues.create_comment(
+            owner=owner,
+            repo=repo_name,
+            issue_number=issue_number,
+            body=response_message
+        )
+
+        logger.info(f"Created comment: {owner} {repo_name} {issue_number} {response_message}")
+    elif str.startswith(body, '/unit'):
+
+        octokit.issues.create_comment(
+            owner=owner,
+            repo=repo_name,
+            issue_number=issue_number,
+            body=f"@{comment['user']['login']}, I will generate unit-tests and respond with new PR url."
+        )
+
+        try:
+            feature_request = body[6:]  # skip '/unit ' part
+
+            # todo call analyzer (post UnitTestRequest with feature request)
+
+            pr_url = None # todo create pr
+
+            response_message = f"@{comment['user']['login']}, generated unit-tests can be found at {pr_url}. Review carefully."
+        except Exception as e:
+            response_message = f"@{comment['user']['login']}, PR was not created, failed generating unit-tests: {str(e)}."
+
+        octokit.issues.create_comment(
+            owner=owner,
+            repo=repo_name,
+            issue_number=issue_number,
+            body=response_message
+        )
+
+    elif str.startswith(body, '/attack'):
+        response_message = f"@{comment['user']['login']}, I will perform security testing for project and provide a report here."
+
+        octokit.issues.create_comment(
+            owner=owner,
+            repo=repo_name,
+            issue_number=issue_number,
+            body=response_message
+        )
+
+        # todo better call analyzer and exploiter
+    else:
+        return

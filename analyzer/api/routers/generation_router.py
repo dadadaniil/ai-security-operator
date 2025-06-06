@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 
@@ -13,29 +14,6 @@ logger = logs.get_logger(__name__)
 
 
 router = APIRouter(prefix="/generation", tags=["Generation"])
-
-
-@router.post("/analysis-summary",
-          response_model=SummaryResponse,
-          description='Generates summary with found vulnerabilities and bad practices.')
-def get_code_summary(query_input: SummaryRequest):
-    raise HTTPException(status_code=500, detail="Not implemented. Yet.")
-    # session_id = query_input.session_id or str(uuid.uuid4())
-    #
-    # chat_history = get_chat_history(session_id)
-    # rag_chain = get_analysis_rag_chain(query_input.model.value)
-    # answer = rag_chain.invoke({
-    #     "input": query_input.source_code,
-    #     "chat_history": chat_history
-    # })['answer']
-    #
-    # # markdown stuff
-    # summary_str = str.replace(answer, '```', '')
-    # summary = json.loads(summary_str)
-    #
-    # insert_application_logs(session_id, query_input.source_code, answer, query_input.model.value)
-    # logger.info(f"SID: {session_id}, Response: {summary}")
-    # return SummaryResponse(summary=summary, session_id=session_id, model=query_input.model)
 
 
 @router.post("/unit-tests",
@@ -57,3 +35,47 @@ def get_unit_tests(request: UnitTestRequest):
     logger.info(f"SID: {session_id}, Response: {answer}")
     insert_application_logs(session_id, 'unit_tests_request', answer)
     return UnitTestResponse(source_code=answer, session_id=session_id)
+
+
+@router.post("/relevant-modules",
+          response_model=RelevantModulesResponse,
+          description='Finds relevant modules to try to apply to project.')
+def get_unit_tests(request: RelevantModulesRequest):
+    session_id = request.session_id or str(uuid.uuid4())
+
+    rag_chain = get_relevant_modules_rag_chain()
+    answer = rag_chain.invoke({
+        "input": f"strictly follow system instructions and write list of modules for security testing given project",
+        "modules": str(request.modules),
+    })['answer']
+
+    # markdown stuff
+    answer = str.replace(answer, '```', '')
+
+    logger.info(f"SID: {session_id}, Response: {answer}")
+    insert_application_logs(session_id, 'relevant_modules_request', answer)
+
+    list_ = json.loads(answer)
+    return RelevantModulesResponse(modules=list_, session_id=session_id)
+
+
+@router.post("/attack-plan",
+          response_model=AttackPlanResponse,
+          description='Generate attack plan to apply to project.')
+def get_attack_plan(request: AttackPlanRequest):
+    session_id = request.session_id or str(uuid.uuid4())
+
+    rag_chain = get_attack_plan_rag_chain()
+    answer = rag_chain.invoke({
+        "input": f"strictly follow system instructions and write attack plan for security testing given project",
+        "modules": str(request.modules),
+    })['answer']
+
+    # markdown stuff
+    answer = str.replace(answer, '```', '')
+
+    logger.info(f"SID: {session_id}, Response: {answer}")
+    insert_application_logs(session_id, 'attack_plan_request', answer)
+
+    plan_ = # todo
+    return AttackPlanResponse(plan=plan_, session_id=session_id)
