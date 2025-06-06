@@ -91,9 +91,18 @@ services:
       - type: bind
         source: /ollama-entrypoint.sh
         target: /root/.ollama
+    networks:
+      - msf-network
     ports:
       - "11434:11434"
     restart: always
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
 
   analyzer:
     image: ${DOCKER_REGISTRY-}ai-analyzer
@@ -104,6 +113,8 @@ services:
     build:
       context: .
       dockerfile: analyzer/ai-analyzer.Dockerfile
+    networks:
+      - msf-network
     environment:
       - API_PORT=8000
       - LLM_MODEL=llama3.2
