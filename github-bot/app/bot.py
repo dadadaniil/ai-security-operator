@@ -2,8 +2,8 @@ import logging
 import os
 from typing import Dict, Any, Optional, Tuple
 
-from fastapi import FastAPI, Request
 from octokit import Octokit
+from fastapi import FastAPI, Request
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -32,6 +32,10 @@ app = FastAPI()
 # Configuration
 GITHUB_APP_ID = os.getenv('GITHUB_APP_ID', 'github_app_id')
 GITHUB_PRIVATE_KEY = os.getenv('GITHUB_PRIVATE_KEY', 'github_private_key')
+GITHUB_PRIVATE_KEY = str.replace(GITHUB_PRIVATE_KEY, '\\n', '\n')
+
+
+octokit = Octokit(auth='installation', app_id=GITHUB_APP_ID, private_key=GITHUB_PRIVATE_KEY)
 
 
 @app.post('/webhook')
@@ -51,8 +55,8 @@ async def handle_webhook(request: Request):
 
     action = payload.get('action')
 
-    for x in payload:
-        logger.info(x)
+    # for x in payload:
+    #     logger.info(x)
     # logger.info(f'handling {event} - {payload}')
 
     if event == 'issue_comment' and action == 'created':
@@ -62,7 +66,7 @@ async def handle_webhook(request: Request):
     return {"status": "processed"}
 
 
-async def create_pull_request(owner: str, repo: str, title: str, body: str, head: str, base: str = "main") -> str:
+def create_pull_request(owner: str, repo: str, title: str, body: str, head: str, base: str = "main") -> str:
     try:
         response = octokit.pulls.create(
             owner=owner,
@@ -77,13 +81,13 @@ async def create_pull_request(owner: str, repo: str, title: str, body: str, head
         logger.error(f"Failed to create PR: {str(e)}")
         raise
 
-async def handle_requirements_command(owner: str, repo: str, issue_number: int, comment: Dict[str, Any]) -> str:
+def handle_requirements_command(owner: str, repo: str, issue_number: int, comment: Dict[str, Any]) -> str:
     try:
         response_message = f"@{comment['user']['login']}, uploading issue text as technical requirements for the project."
     except Exception as e:
         response_message = f"@{comment['user']['login']}, failed uploading issue text as technical requirements for the project: {str(e)}."
 
-    await octokit.issues.create_comment(
+    octokit.issues.create_comment(
         owner=owner,
         repo=repo,
         issue_number=issue_number,
@@ -93,8 +97,8 @@ async def handle_requirements_command(owner: str, repo: str, issue_number: int, 
     logger.info(f"Created comment: {owner} {repo} {issue_number} {response_message}")
     return response_message
 
-async def handle_unit_command(owner: str, repo: str, issue_number: int, comment: Dict[str, Any], feature_request: str) -> str:
-    await octokit.issues.create_comment(
+def handle_unit_command(owner: str, repo: str, issue_number: int, comment: Dict[str, Any], feature_request: str) -> str:
+    octokit.issues.create_comment(
         owner=owner,
         repo=repo,
         issue_number=issue_number,
@@ -104,7 +108,7 @@ async def handle_unit_command(owner: str, repo: str, issue_number: int, comment:
     try:
         branch_name = f"unit-tests-{issue_number}"
         
-        pr_url = await create_pull_request(
+        pr_url = create_pull_request(
             owner=owner,
             repo=repo,
             title=f"Unit tests for issue #{issue_number}",
@@ -116,7 +120,7 @@ async def handle_unit_command(owner: str, repo: str, issue_number: int, comment:
     except Exception as e:
         response_message = f"@{comment['user']['login']}, PR was not created, failed generating unit-tests: {str(e)}."
 
-    await octokit.issues.create_comment(
+    octokit.issues.create_comment(
         owner=owner,
         repo=repo,
         issue_number=issue_number,
@@ -124,10 +128,10 @@ async def handle_unit_command(owner: str, repo: str, issue_number: int, comment:
     )
     return response_message
 
-async def handle_attack_command(owner: str, repo: str, issue_number: int, comment: Dict[str, Any]) -> str:
+def handle_attack_command(owner: str, repo: str, issue_number: int, comment: Dict[str, Any]) -> str:
     response_message = f"@{comment['user']['login']}, I will perform security testing for project and provide a report here."
 
-    await octokit.issues.create_comment(
+    octokit.issues.create_comment(
         owner=owner,
         repo=repo,
         issue_number=issue_number,
@@ -144,7 +148,7 @@ def parse_command(body: str) -> Tuple[str, str]:
     args = parts[1] if len(parts) > 1 else ''
     return command, args
 
-async def handle_issue_comment(payload: Dict[str, Any]):
+def handle_issue_comment(payload: Dict[str, Any]):
     comment = payload['comment']
     issue = payload['issue']
     repo = payload['repository']
@@ -166,4 +170,4 @@ async def handle_issue_comment(payload: Dict[str, Any]):
 
     handler = handlers.get(command)
     if handler:
-        await handler()
+        handler()
