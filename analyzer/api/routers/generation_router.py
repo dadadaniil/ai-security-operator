@@ -1,6 +1,7 @@
 import json
 import logging
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 
@@ -71,11 +72,36 @@ def get_attack_plan(request: AttackPlanRequest):
         "modules": str(request.modules),
     })['answer']
 
-    # markdown stuff
     answer = str.replace(answer, '```', '')
 
     logger.info(f"SID: {session_id}, Response: {answer}")
     insert_application_logs(session_id, 'attack_plan_request', answer)
 
-    plan_ = # todo
-    return AttackPlanResponse(plan=plan_, session_id=session_id)
+    try:
+        plan_data = json.loads(answer)
+        steps = []
+        for step_data in plan_data.get('steps', []):
+            exploit_instructions = MetasploitInstructions(
+                module_name=step_data['exploit_instructions']['module_name'],
+                options=step_data['exploit_instructions']['options']
+            )
+
+            step = AttackStep(
+                step_id=step_data['step_id'],
+                description=step_data['description'],
+                tool_to_use=step_data['tool_to_use'],
+                exploit_instructions=exploit_instructions,
+                expected_result_criteria=step_data['expected_result_criteria']
+            )
+            steps.append(step)
+
+        plan = AttackPlan(
+            plan_id=plan_data['plan_id'],
+            target_info=plan_data['target_info'],
+            steps=steps
+        )
+
+        return AttackPlanResponse(plan=plan, session_id=session_id)
+    except Exception as e:
+        logger.error(f"Error parsing attack plan: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid attack plan format: {str(e)}")
