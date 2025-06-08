@@ -10,7 +10,7 @@ DEFAULT_PMD_REPORT_REL = "lint/pmd_report.json"
 DEFAULT_JOERN_EXPORT_REL = "cpg_all/export.json"
 DEFAULT_MERGED_OUTPUT_REL = "merged_graph.json"
 DEFAULT_MERGE_SCRIPT = "./merge_tool.py"
-DEFAULT_TARGET_URL = "http://localhost:5001/api/upload-graph"
+DEFAULT_TARGET_URL = "http://localhost:8000/project/code"
 DEFAULT_COMPOSE_FILE = "./docker-compose.yml"
 
 
@@ -175,11 +175,11 @@ def send_data(file_path, target_url):
     if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
         print(f"ERROR: File to send not found or is empty: {file_path}")
         return False
-    headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     timeout_seconds = 120
     try:
         with open(file_path, 'rb') as f:
-            response = requests.post(target_url, data=f, headers=headers, timeout=timeout_seconds)
+            files = {'file': (os.path.basename(file_path), f)}
+            response = requests.post(target_url, files=files, timeout=timeout_seconds)
         response.raise_for_status()
         print(f"Data sent successfully. Status: {response.status_code}")
         print("Server response:", response.json())
