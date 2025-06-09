@@ -66,7 +66,7 @@ relevant_modules_prompt = ChatPromptTemplate.from_template(
     "Output strictly only list of chosen modules. Do not output anything else. Output strictly in json format. List of given modules: {modules}. Context: {context}")
 
 
-attack_plan_prompt = # todo
+attack_plan_prompt = ...# todo
 
 
 def get_analysis_rag_chain() -> Runnable:

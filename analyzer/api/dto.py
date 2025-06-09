@@ -63,12 +63,12 @@ class AttackPlanExecutionReport(BaseModel):
 
 @dataclass
 class MetasploitInstructions:
-    tool_type: str = "metasploit"
+    tool_type: str
     module_name: str
     options: Dict[str, Any]
 
 class FuzzerInstructions(BaseModel):
-    tool_type: str = "fuzzer"
+    tool_type: str
     target_endpoint: str
     fuzzing_parameters: Dict[str, Any]
 

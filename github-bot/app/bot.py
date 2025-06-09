@@ -2,7 +2,6 @@ import base64
 import json
 import logging
 import os
-import struct
 from typing import Dict, Any, Optional, Tuple
 
 import requests
@@ -36,7 +35,7 @@ logger = get_logger(__name__)
 GITHUB_APP_ID = os.getenv('GITHUB_APP_ID', 'github_app_id')
 GITHUB_PRIVATE_KEY = os.getenv('GITHUB_PRIVATE_KEY', 'github_private_key')
 GITHUB_PRIVATE_KEY = str.replace(GITHUB_PRIVATE_KEY, '\\n', '\n')
-ANALYZER_BASEURL = os.getenv('ANALYZER_BASEURL', 'http://localhost:8000')
+ANALYZER_BASEURL = os.getenv('ANALYZER_BASEURL')
 
 
 app = FastAPI()
@@ -46,58 +45,42 @@ octokit = Octokit(auth='installation', app_id=GITHUB_APP_ID, private_key=GITHUB_
 
 @app.post('/webhook')
 async def handle_webhook(request: Request):
-    # todo verify signature
-    # signature = request.headers.get('x-hub-signature-256')
-    # body = await request.body()
-
-    # if not signature:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail="Invalid signature"
-    #     )
-
     event = request.headers.get('x-github-event')
     payload = await request.json()
 
-    logger.info(payload)
-
-    # wtf
-    payload = json.loads(payload.get('payload'))
-
     action = payload.get('action')
 
-    # for x in payload:
-    #     logger.info(x)
-    # logger.info(f'handling {event} - {payload}')
-
-    if event == 'issue_comment' and action == 'created':
+    if event == 'issues':
+        await handle_issue(payload)
+    elif event == 'issue_comment' and action == 'created':
         await handle_issue_comment(payload)
     # not reacting to push events because uploading too sloow
 
     return {"status": "processed"}
 
 
-def handle_requirements_command(owner: str, repo: str, issue: Dict, comment: Dict[str, Any]):
+def handle_requirements_command(owner: str, repo: str, issue: Dict):
     if not str.startswith(issue['title'], 'TR'):
         return
 
+    logger.info("Processing TR issue")
     try:
-        file_obj = ('TR.txt', comment['body'])
+        file_obj = ('TR.txt', issue['body'])
 
         files = {'file': file_obj}
         data = {}
 
         response = requests.post(
-            f'{ANALYZER_BASEURL}/project/requirements',
+            f'{ANALYZER_BASEURL}project/requirements',
             files=files,
             data=data,
             timeout=120
         )
         response.raise_for_status()
 
-        response_message = f"@{comment['user']['login']}, issue text was uploaded as technical requirements for the project."
+        response_message = f"@{issue['user']['login']}, issue text was uploaded as technical requirements for the project."
     except Exception as e:
-        response_message = f"@{comment['user']['login']}, failed uploading issue text as technical requirements for the project: {str(e)}."
+        response_message = f"@{issue['user']['login']}, failed uploading issue text as technical requirements for the project: {str(e)}."
 
     octokit.issues.create_comment(
         owner=owner,
@@ -173,7 +156,6 @@ async def handle_unit_command(owner: str, repo: str, issue_number: int, comment:
         response_message = f"@{comment['user']['login']}, generated unit-tests can be found at {pr_url}. Review carefully."
     except Exception as e:
         response_message = f"@{comment['user']['login']}, PR was not created, failed generating unit-tests: {str(e)}."
-        raise
 
     octokit.issues.create_comment(
         owner=owner,
@@ -203,6 +185,17 @@ def parse_command(body: str) -> Tuple[str, str]:
     args = parts[1] if len(parts) > 1 else ''
     return command, args
 
+
+async def handle_issue(payload: Dict[str, Any]):
+    issue = payload['issue']
+    repo = payload['repository']
+
+    owner = repo['owner']['login']
+    repo_name = repo['name']
+
+    handle_requirements_command(owner, repo_name, issue)
+
+
 async def handle_issue_comment(payload: Dict[str, Any]):
     comment = payload['comment']
     issue = payload['issue']
@@ -217,17 +210,10 @@ async def handle_issue_comment(payload: Dict[str, Any]):
     if not command:
         return
 
-    handlers = {
-        'requirements': lambda: handle_requirements_command(owner, repo_name, issue, comment),
-        'attack': lambda: handle_attack_command(owner, repo_name, issue_number, comment)
-    }
-
     if command == 'unit':
         await handle_unit_command(owner, repo_name, issue_number, comment, args)
-    else:
-        handler = handlers.get(command)
-        if handler:
-            handler()
+    elif command == 'attack':
+        handle_attack_command(owner, repo_name, issue_number, comment)
 
 
 # if __name__ == '__main__':
