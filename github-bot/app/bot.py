@@ -2,8 +2,10 @@ import base64
 import json
 import logging
 import os
+import struct
 from typing import Dict, Any, Optional, Tuple
 
+import requests
 import uvicorn
 from octokit import Octokit
 from fastapi import FastAPI, Request
@@ -30,13 +32,14 @@ def get_logger(name: str) -> logging.Logger:
 
 logger = get_logger(__name__)
 
-app = FastAPI()
 
-# Configuration
 GITHUB_APP_ID = os.getenv('GITHUB_APP_ID', 'github_app_id')
 GITHUB_PRIVATE_KEY = os.getenv('GITHUB_PRIVATE_KEY', 'github_private_key')
 GITHUB_PRIVATE_KEY = str.replace(GITHUB_PRIVATE_KEY, '\\n', '\n')
+ANALYZER_BASEURL = os.getenv('ANALYZER_BASEURL', 'http://localhost:8000')
 
+
+app = FastAPI()
 
 octokit = Octokit(auth='installation', app_id=GITHUB_APP_ID, private_key=GITHUB_PRIVATE_KEY)
 
@@ -69,21 +72,36 @@ async def handle_webhook(request: Request):
     return {"status": "processed"}
 
 
-def handle_requirements_command(owner: str, repo: str, issue_number: int, comment: Dict[str, Any]) -> str:
+def handle_requirements_command(owner: str, repo: str, issue: Dict, comment: Dict[str, Any]):
+    if not str.startswith(issue['title'], 'TR'):
+        return
+
     try:
-        response_message = f"@{comment['user']['login']}, uploading issue text as technical requirements for the project."
+        file_obj = ('TR.txt', comment['body'])
+
+        files = {'file': file_obj}
+        data = {}
+
+        response = requests.post(
+            f'{ANALYZER_BASEURL}/project/requirements',
+            files=files,
+            data=data,
+            timeout=120
+        )
+        response.raise_for_status()
+
+        response_message = f"@{comment['user']['login']}, issue text was uploaded as technical requirements for the project."
     except Exception as e:
         response_message = f"@{comment['user']['login']}, failed uploading issue text as technical requirements for the project: {str(e)}."
 
     octokit.issues.create_comment(
         owner=owner,
         repo=repo,
-        issue_number=issue_number,
+        issue_number=issue['number'],
         body=response_message
     )
 
-    logger.info(f"Created comment: {owner} {repo} {issue_number} {response_message}")
-    return response_message
+    logger.info(f"Created comment: {owner} {repo} {issue['number']} {response_message}")
 
 
 async def handle_unit_command(owner: str, repo: str, issue_number: int, comment: Dict[str, Any], feature_request: str) -> str:
@@ -99,6 +117,7 @@ async def handle_unit_command(owner: str, repo: str, issue_number: int, comment:
         base_branch = "main"  # or "master" depending on your repo
 
         # Get the latest commit from base branch
+        # todo get ref from PR, not main
         base_ref = octokit.git.get_ref(
             owner=owner,
             repo=repo,
@@ -116,10 +135,11 @@ async def handle_unit_command(owner: str, repo: str, issue_number: int, comment:
             sha=base_commit_sha
         )
 
+        response = requests.get(f'{ANALYZER_BASEURL}/generation/unit-tests', timeout=120)
+        response.raise_for_status()  # Raises exception for 4XX/5XX status codes
 
-        # todo real api call
-        file_path = f"tests/test_issue_{issue_number}.py"
-        file_content = f"# Sample tests for {feature_request}"
+        file_path = f"tests/unit_tests_issue_{issue_number}.py"
+        file_content = response.text
 
         file_bytes = file_content.encode("utf-8")
         base64_bytes = base64.b64encode(file_bytes)
@@ -193,7 +213,7 @@ async def handle_issue_comment(payload: Dict[str, Any]):
         return
 
     handlers = {
-        'requirements': lambda: handle_requirements_command(owner, repo_name, issue_number, comment),
+        'requirements': lambda: handle_requirements_command(owner, repo_name, issue, comment),
         'attack': lambda: handle_attack_command(owner, repo_name, issue_number, comment)
     }
 
