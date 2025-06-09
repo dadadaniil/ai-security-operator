@@ -1,7 +1,10 @@
+import base64
+import json
 import logging
 import os
 from typing import Dict, Any, Optional, Tuple
 
+import uvicorn
 from octokit import Octokit
 from fastapi import FastAPI, Request
 
@@ -60,26 +63,11 @@ async def handle_webhook(request: Request):
     # logger.info(f'handling {event} - {payload}')
 
     if event == 'issue_comment' and action == 'created':
-        handle_issue_comment(payload)
+        await handle_issue_comment(payload)
     # not reacting to push events because uploading too sloow
 
     return {"status": "processed"}
 
-
-def create_pull_request(owner: str, repo: str, title: str, body: str, head: str, base: str = "main") -> str:
-    try:
-        response = octokit.pulls.create(
-            owner=owner,
-            repo=repo,
-            title=title,
-            body=body,
-            head=head,
-            base=base
-        )
-        return response["html_url"]
-    except Exception as e:
-        logger.error(f"Failed to create PR: {str(e)}")
-        raise
 
 def handle_requirements_command(owner: str, repo: str, issue_number: int, comment: Dict[str, Any]) -> str:
     try:
@@ -97,7 +85,8 @@ def handle_requirements_command(owner: str, repo: str, issue_number: int, commen
     logger.info(f"Created comment: {owner} {repo} {issue_number} {response_message}")
     return response_message
 
-def handle_unit_command(owner: str, repo: str, issue_number: int, comment: Dict[str, Any], feature_request: str) -> str:
+
+async def handle_unit_command(owner: str, repo: str, issue_number: int, comment: Dict[str, Any], feature_request: str) -> str:
     octokit.issues.create_comment(
         owner=owner,
         repo=repo,
@@ -107,18 +96,59 @@ def handle_unit_command(owner: str, repo: str, issue_number: int, comment: Dict[
 
     try:
         branch_name = f"unit-tests-{issue_number}"
-        
-        pr_url = create_pull_request(
+        base_branch = "main"  # or "master" depending on your repo
+
+        # Get the latest commit from base branch
+        base_ref = octokit.git.get_ref(
+            owner=owner,
+            repo=repo,
+            ref=f"heads/{base_branch}"
+        )
+        base_ref = json.loads(base_ref._response.text)
+
+        base_commit_sha = base_ref['object']['sha']
+
+        # Create new branch
+        octokit.git.create_ref(
+            owner=owner,
+            repo=repo,
+            ref=f"refs/heads/{branch_name}",
+            sha=base_commit_sha
+        )
+
+
+        # todo real api call
+        file_path = f"tests/test_issue_{issue_number}.py"
+        file_content = f"# Sample tests for {feature_request}"
+
+        file_bytes = file_content.encode("utf-8")
+        base64_bytes = base64.b64encode(file_bytes)
+        base64_string = base64_bytes.decode("ascii")
+
+        octokit.repos.create_or_update_file_contents(
+            owner=owner,
+            repo=repo,
+            path=file_path,
+            message=f"Add unit tests for issue #{issue_number}",
+            content=base64_string,
+            branch=branch_name
+        )
+
+        pr = octokit.pulls.create(
             owner=owner,
             repo=repo,
             title=f"Unit tests for issue #{issue_number}",
             body=f"Generated unit tests for: {feature_request}",
-            head=branch_name
+            head=branch_name,
+            base=base_branch
         )
+        pr = json.loads(pr._response.text)
 
+        pr_url = pr['html_url']
         response_message = f"@{comment['user']['login']}, generated unit-tests can be found at {pr_url}. Review carefully."
     except Exception as e:
         response_message = f"@{comment['user']['login']}, PR was not created, failed generating unit-tests: {str(e)}."
+        raise
 
     octokit.issues.create_comment(
         owner=owner,
@@ -148,7 +178,7 @@ def parse_command(body: str) -> Tuple[str, str]:
     args = parts[1] if len(parts) > 1 else ''
     return command, args
 
-def handle_issue_comment(payload: Dict[str, Any]):
+async def handle_issue_comment(payload: Dict[str, Any]):
     comment = payload['comment']
     issue = payload['issue']
     repo = payload['repository']
@@ -164,10 +194,16 @@ def handle_issue_comment(payload: Dict[str, Any]):
 
     handlers = {
         'requirements': lambda: handle_requirements_command(owner, repo_name, issue_number, comment),
-        'unit': lambda: handle_unit_command(owner, repo_name, issue_number, comment, args),
         'attack': lambda: handle_attack_command(owner, repo_name, issue_number, comment)
     }
 
-    handler = handlers.get(command)
-    if handler:
-        handler()
+    if command == 'unit':
+        await handle_unit_command(owner, repo_name, issue_number, comment, args)
+    else:
+        handler = handlers.get(command)
+        if handler:
+            handler()
+
+
+# if __name__ == '__main__':
+    # uvicorn.run(app, host="0.0.0.0", port=8000)
