@@ -161,7 +161,6 @@ def merge_reports(pmd_report_path, joern_export_path, merged_output_path):
                             # PMD reports paths relative to /sources (which is project root)
                             # Assuming standard Maven structure src/main/java
                             pmd_like_base = "/sources/src/main/java/"
-                            # todo required configuration
                             joern_path_for_matching = pmd_like_base + relative_path
                         else:
                             print(

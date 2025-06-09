@@ -64,6 +64,7 @@ services:
     env_file:
       - ./github-bot.env
     environment:
+      - ANALYZER_BASEURL=http://analyzer:8000/
       - PORT=3000
     ports:
       - "3000:3000"
