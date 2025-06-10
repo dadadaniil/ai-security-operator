@@ -32,3 +32,5 @@ TestResults.xml
 **/__pycache__
 
 **.idea
+**.env
+github-bot/app.log

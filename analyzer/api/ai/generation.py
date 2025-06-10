@@ -59,6 +59,16 @@ unit_test_writing_prompt = ChatPromptTemplate.from_messages([
 ])
 
 
+relevant_modules_prompt = ChatPromptTemplate.from_template(
+    "You are given source code for project, static analysis reports for this code and list of available modules for testing the project. "
+    "Examine source code for project, config files and any other files relative to deployment and potentially vulnerable files. "
+    "Choose most applicable and relevant modules for security testing the project. "
+    "Output strictly only list of chosen modules. Do not output anything else. Output strictly in json format. List of given modules: {modules}. Context: {context}")
+
+
+attack_plan_prompt = ...# todo
+
+
 def get_analysis_rag_chain() -> Runnable:
     llm = __get_llm(temperature=0.15)
 
@@ -83,3 +93,29 @@ def get_unit_tests_rag_chain() -> Runnable:
     question_answer_chain = create_stuff_documents_chain(llm, unit_test_writing_prompt)
     rag_chain = create_retrieval_chain(ensemble_retriever, question_answer_chain)
     return rag_chain
+
+
+def get_relevant_modules_rag_chain() -> Runnable:
+    llm = __get_llm(temperature=0.1)
+
+    code_retriever = __get_retriever(DataType.SOURCE_CODE, 30)
+    reports_retriever = __get_retriever(DataType.REPORTS, 30)
+
+    ensemble_retriever = EnsembleRetriever(
+        retrievers=[code_retriever, reports_retriever], weights=[0.5, 0.5]
+    )
+
+    question_answer_chain = create_stuff_documents_chain(llm, relevant_modules_prompt)
+    rag_chain = create_retrieval_chain(ensemble_retriever, question_answer_chain)
+    return rag_chain
+
+
+def get_attack_plan_rag_chain() -> Runnable:
+    llm = __get_llm(temperature=0.05)
+
+    code_retriever = __get_retriever(DataType.SOURCE_CODE, 20)
+
+    question_answer_chain = create_stuff_documents_chain(llm, attack_plan_prompt)
+    rag_chain = create_retrieval_chain(code_retriever, question_answer_chain)
+    return rag_chain
+
