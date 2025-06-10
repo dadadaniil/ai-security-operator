@@ -97,13 +97,13 @@ services:
     ports:
       - "11434:11434"
     restart: always
-#    deploy:
-#      resources:
-#        reservations:
-#          devices:
-#            - driver: nvidia
-#              count: all
-#              capabilities: [ gpu ]
+  #  deploy:
+  #    resources:
+  #      reservations:
+  #        devices:
+  #          - driver: nvidia
+  #            count: all
+  #            capabilities: [ gpu ]
 
   analyzer:
     image: ${DOCKER_REGISTRY-}ai-analyzer
@@ -116,11 +116,13 @@ services:
       dockerfile: analyzer/ai-analyzer.Dockerfile
     networks:
       - msf-network
+    volumes:
+      - analyzer:/home/analyzer/
     environment:
       - API_PORT=8000
       - LLM_MODEL=llama3.2
       - VECTORSTORE_PATH=./chroma_db
-      - LLM_OUTPUT_TOKEN_LIMIT=120
+      - LLM_OUTPUT_TOKEN_LIMIT=5000
       - OLLAMA_HOST=http://ollama:11434/
 
 networks:
@@ -132,4 +134,5 @@ networks:
 volumes:
   msf-db:
   msf-data:
-  ollama: {}
+  analyzer:
+  ollama:

@@ -50,22 +50,37 @@ async def handle_webhook(request: Request):
 
     action = payload.get('action')
 
-    if event == 'issues':
-        await handle_issue(payload)
+    if event == 'issues' and action == 'opened':
+        logger.info("!!! Issue opened !!!")
+        handle_issue(payload)
     elif event == 'issue_comment' and action == 'created':
+        logger.info("!!! Issue commented !!!")
         await handle_issue_comment(payload)
     # not reacting to push events because uploading too sloow
 
     return {"status": "processed"}
 
 
+last_uploaded_file = None
+
 def handle_requirements_command(owner: str, repo: str, issue: Dict):
+    global last_uploaded_file
+
     if not str.startswith(issue['title'], 'TR'):
         return
 
-    logger.info("Processing TR issue")
+    if issue['body'] == '' or issue['body'] == None:
+        return
+
     try:
-        file_obj = ('TR.txt', issue['body'])
+        filename = f'{issue["title"]}.txt'
+        if filename == last_uploaded_file:
+            logger.warning('DUPLICATE ISSUE OPENING, WHY')
+            return
+
+        last_uploaded_file = filename
+
+        file_obj = (filename, issue['body'])
 
         files = {'file': file_obj}
         data = {}
@@ -123,11 +138,22 @@ async def handle_unit_command(owner: str, repo: str, issue_number: int, comment:
             sha=base_commit_sha
         )
 
-        response = requests.get(f'{ANALYZER_BASEURL}/generation/unit-tests', timeout=120)
+        # todo Hardcoded for now
+        unit_data = {
+          "request": feature_request,
+          "language": "Java",
+          "framework": "Any"
+        }
+
+        response = requests.post(
+            f'{ANALYZER_BASEURL}generation/unit-tests',
+            json=unit_data,
+            timeout=200
+        )
         response.raise_for_status()  # Raises exception for 4XX/5XX status codes
 
         file_path = f"tests/unit_tests_issue_{issue_number}.py"
-        file_content = response.text
+        file_content = response.json()['source_code']
 
         file_bytes = file_content.encode("utf-8")
         base64_bytes = base64.b64encode(file_bytes)
@@ -186,7 +212,7 @@ def parse_command(body: str) -> Tuple[str, str]:
     return command, args
 
 
-async def handle_issue(payload: Dict[str, Any]):
+def handle_issue(payload: Dict[str, Any]):
     issue = payload['issue']
     repo = payload['repository']
 
